@@ -1,31 +1,37 @@
-LETTERS = ['a','b','c','d','e','f','g','h']
-
 class Game:
-    def __init__(self, moveNumber=1, whoseMove='w', currentBoard=None):
+    def __init__(self, moveNumber=1, whoseMove='white', currentBoard=None):
         self.moveNumber = moveNumber
         self.whoseMove = whoseMove
-        self.currentBoard = currentBoard
+        if currentBoard == None:
+            self.currentBoard = Board(self)
+        else:
+            self.currentBoard = currentBoard
         return
+    
+    def getCurrentBoard(self):
+        return self.currentBoard
 
 class Board:
-    def __init__(self):
-        # [0,0] corresponds to a1; [0,7] is h1; [7,0] is a8, etc.
+    def __init__(self, game=None):
+        self.game = game
+        # [0,0] corresponds to a1; [7,0] is h1; [0,7] is a8, etc.
         self.squares = [[Square([i, j]) for i in range(8)] for j in range(8)]
-        self.setPieces(([0,0],[0,7]),"Rook", "white")
-        self.setPieces(([7,0],[7,7]),"Rook", "black")
-        self.setPieces(([0,1],[0,6]), "Knight", "white")
-        self.setPieces(([7,1],[7,6]), "Knight", "black")
-        self.setPieces(([0,2],[0,5]), "Bishop", "white")
-        self.setPieces(([7,2],[7,5]), "Bishop", "black")
-        self.setPieces(([0,3]), "Queen", "white")
-        self.setPieces(([7,3]), "Queen", "black")
-        self.setPieces(([0,4]), "King", "white")
-        self.setPieces(([7,4]), "King", "black")
-        self.setPieces(([1,k] for k in range(8)), Pawn(), "white")
-        self.setPieces(([6,k] for k in range(8)), Pawn(), "black")
+        self.setPieces({(0,0),(7,0)}, Rook(), "white")
+        self.setPieces({(0,7),(7,7)}, Rook(), "black")
+        self.setPieces({(1,0),(6,0)}, Knight(), "white")
+        self.setPieces({(1,7),(6,7)}, Knight(), "black")
+        self.setPieces({(2,0),(5,0)}, Bishop(), "white")
+        self.setPieces({(2,7),(5,7)}, Bishop(), "black")
+        self.setPieces({(3,0)}, Queen(), "white")
+        self.setPieces({(3,7)}, Queen(), "black")
+        self.setPieces({(4,0)}, King(), "white")
+        self.setPieces({(4,7)}, King(), "black")
+        self.setPieces({(1,k) for k in range(8)}, Pawn(), "white")
+        self.setPieces({(6,k) for k in range(8)}, Pawn(), "black")
+        self.generateAllValidMoves()
         # These will be used to determine checks, checkmates, and stalemates
-        self.whiteKing = self.getSquare(0,4).getPiece()
-        self.blackKing = self.getSquare(7,4).getPiece()
+        self.whiteKing = self.getSquare(4,0).getPiece()
+        self.blackKing = self.getSquare(4,7).getPiece()
         return
     
     def setPieces(self, coordsSet, piece, color):
@@ -33,20 +39,47 @@ class Board:
             self.getSquare(i, j).setPiece(piece)
             piece.setColor(color)
             piece.setSquare(self.getSquare(i, j))
+            piece.setBoard(self)
         return
     
     def getSquare(self, targetX, targetY):
         return self.squares[targetX][targetY]
     
+    def getAllSquares(self):
+        allSquares = []
+        for row in self.squares:
+            for square in row:
+                allSquares.append(square)
+        return allSquares
+    
+    def getAllPieces(self):
+        allPieces = []
+        for square in self.getAllSquares():
+            if square.getPiece() != None:
+                allPieces.append(square.getPiece())
+        return allPieces
+    
+    def generateAllValidMoves(self):
+        self.allValidMoves = []
+        for piece in self.getAllPieces():
+            piece.generateValidMoves()
+            self.allValidMoves += piece.getValidMoves()
+        return
+    
+    def getAllValidMoves(self):
+        return self.allValidMoves
 
 class Square:
-    def __init__(self, piece=None, coordinates=None):
+    def __init__(self, coordinates=None, piece=None, board=None):
         self.piece = piece
         self.coordinates = coordinates
+        self.board = board
+        # x and y variables for convenience
+        self.x = self.coordinates[0]
+        self.y = self.coordinates[1]
         return
     def setCoordinates(self, c):
         self.coordinates = c
-        # x and y variables for convenience
         self.x = self.coordinates[0]
         self.y = self.coordinates[1]
         return
@@ -55,12 +88,22 @@ class Square:
         return
     def getPiece(self):
         return self.piece
+    def getPieceColor(self):
+        if self.piece is not None:
+            return self.piece.getColor()
+        else:
+            return None
     def getCoordinates(self):
         return self.coordinates
     def getX(self):
         return self.x
     def getY(self):
         return self.y
+    def getBoard(self):
+        return self.board
+    def setBoard(self, b):
+        self.board = b
+        return
 
 class Move:
     def __init__(self, pieceMoved=None, fromSquare=None, toSquare=None, moveType=None):
@@ -68,16 +111,6 @@ class Move:
         self.fromSquare = fromSquare
         self.toSquare = toSquare
         self.moveType = moveType
-
-    def leavesKingInCheck(self, board):
-        if self.pieceMoved.getColor() == "white":
-            currentKing = board.whiteKing
-            oppositeSide = "black"
-        else:
-            currentKing = board.blackKing
-            oppositeSide = "white"
-        
-        return
 
     def setMoveType(self, t):
         self.moveType = t
@@ -97,10 +130,17 @@ class Move:
     
 
 class Piece:
-    def __init__(self, color=None, square=None):
+    def __init__(self, color=None, square=None, board=None):
         self.color = color
         self.square = square
+        self.board = board
+        self.validMoves = []
+        self.threatenedSquares = []
         return
+    def getValidMoves(self):
+        return self.validMoves
+    def getThreatenedSquares(self):
+        return self.threatenedSquares
     def getColor(self):
         return self.color
     def setColor(self, c):
@@ -110,17 +150,24 @@ class Piece:
         return self.square
     def setSquare(self, s):
         self.square = s
-        self.x = self.square.x
-        self.y = self.square.y
+        self.x = self.square.getX()
+        self.y = self.square.getY()
+        return
+    def getBoard(self):
+        return self.board
+    def setBoard(self, b):
+        self.board = b
         return
     
 class Pawn(Piece):
-    def __init__(self, firstMoveStatus=0):
-        super().__init__()
+    def __init__(self, firstMoveStatus=0, color=None, square=None, board=None):
+        super().__init__(color, square, board)
         # 0 if pawn hasn't been moved, 1 if it just moved and en passant is possible,
         # and 2 if it has moved and en passant is not possible
         self.firstMoveStatus = firstMoveStatus
-    def getValidMoves(self, board):
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
         # Determines which way pawn is moving
         if self.color == "white":
@@ -130,101 +177,125 @@ class Pawn(Piece):
 
         # Adds all possible moves
         if board.getSquare(self.x, self.y+self.inc).piece == None:
-            self.validMoves.append(Move(self, self.square, board.getSquare(self.x, self.y+self.inc), 0))
+            self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+self.inc), 0))
             if board.getSquare(self.x, self.y+2*self.inc).piece == None and self.firstMoveStatus == 0:
-                self.validMoves.append(Move(self, self.square, board.getSquare(self.x, self.y+2*self.inc), 0))
+                self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+2*self.inc), 0))
         if board.getSquare(self.x+1, self.y+self.inc).piece != None and board.getSquare(self.x+1, self.y+self.inc).piece.color != self.color:
-            self.validMoves.append(Move(self, self.square, board.getSquare(self.x+1, self.y+self.inc), 1))
+            self.validMoves.append(Move(self, square, board.getSquare(self.x+1, self.y+self.inc), 1))
         if board.getSquare(self.x-1, self.y+self.inc).piece != None and board.getSquare(self.x-1, self.y+self.inc).piece.color != self.color:
-            self.validMoves.append(Move(self, self.square, board.getSquare(self.x-1, self.y+self.inc), 1))
-        return self.validMoves
+            self.validMoves.append(Move(self, square, board.getSquare(self.x-1, self.y+self.inc), 1))
+        return
 
 class Rook(Piece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, color=None, square=None, board=None):
+        super().__init__(color, square, board)
         return
     
-    def getValidMoves(self, board):
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
-        for i in range(0-self.y, 7-self.y):
-            if board.getSquare(self.x,self.y+i).getPiece() == None:
-                self.validMoves.append(Move(self.getSquare(),board.getSquare(self.x,self.y+i),0))
-            elif board.getSquare(self.x,self.y+i).getPiece().getColor() != self.getColor():
-                self.validMoves.append(Move(self.getSquare(),board.getSquare(self.x,self.y+i),1))
-        for j in range(0-self.x, 7-self.x):
-            if board.getSquare(self.x+j,self.y).getPiece() == None:
-                self.validMoves.append(Move(self.getSquare(),board.getSquare(self.x+j,self.y),0))
-            elif board.getSquare(self.x+j,self.y).getPiece().getColor() != self.getColor():
-                self.validMoves.append(Move(self.getSquare(),board.getSquare(self.x+j,self.y),1))
-        return self.validMoves
+        for i in range(0, 1-self.y, -1):
+            current = board.getSquare(self.x,self.y+i)
+            if current.getPiece() == None:
+                self.validMoves.append(Move(self,square,current,0))
+            elif current.getPiece().getColor() != self.getColor():
+                self.validMoves.append(Move(self,square,current,1))
+            else:
+                break
+        for i in range(0, 8-self.y):
+            current = board.getSquare(self.x,self.y+i)
+            if current.getPiece() == None:
+                self.validMoves.append(Move(self,square,current,0))
+            elif current.getPiece().getColor() != self.getColor():
+                self.validMoves.append(Move(self,square,current,1))
+            else:
+                break
+        for j in range(0, 1-self.x, -1):
+            current = board.getSquare(self.x+j,self.y)
+            if current.getPiece() == None:
+                self.validMoves.append(Move(self,square,current,0))
+            elif current.getPiece().getColor() != self.getColor():
+                self.validMoves.append(Move(self,square,current,1))
+            else:
+                break
+        for j in range(0, 8-self.x):
+            current = board.getSquare(self.x+j,self.y)
+            if current.getPiece() == None:
+                self.validMoves.append(Move(self,square,current,0))
+            elif current.getPiece().getColor() != self.getColor():
+                self.validMoves.append(Move(self,square,current,1))
+            else:
+                break
+        return
 
 class Knight(Piece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, color=None, square=None, board=None):
+        super().__init__(color, square, board)
         return
     
-    def getValidMoves(self, board):
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
         self.potentialCoordinates = [(self.x+1,self.y+2),(self.x-1,self.y+2),(self.x+2,self.y+1),(self.x-2,self.y+1),(self.x+2,self.y-1),(self.x-2,self.y-1),(self.x+1,self.y-2),(self.x-1,self.y-2)]
         self.possibleSquares = [board.getSquare(i,j) for (i,j) in self.potentialCoordinates if -1<i<8 and -1<j<8]
         for i in self.possibleSquares:
             if i.getPiece() == None:
-                self.validMoves.append(Move(self.getSquare(), i, 0))
+                self.validMoves.append(Move(self, square, i, 0))
             elif i.getPiece().getColor() != self.getColor():
-                self.validMoves.append(Move(self.getSquare(), i, 1))
+                self.validMoves.append(Move(self, square, i, 1))
         return
 
 class Bishop(Piece):
-    def __init__(self):
-        super().__init__()
-        return
+    def __init__(self, color=None, square=None, board=None):
+        super().__init__(color, square, board)
+        return 
     
-    def getValidMoves(self, board):
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
-        self.possibleSquares = []
-        for i in range(8):
-            if -1<self.y+(self.x-i)<8:
-                self.possibleSquares.append(board.getSquare(i,self.y+(self.x-i)))
-            if -1<self.y-(self.x-i)<8:
-                self.possibleSquares.append(board.getSquare(i,self.y-(self.x-i)))
-        for j in self.possibleSquares:
-            if j.getPiece() == None:
-                self.validMoves.append(Move(self.getSquare(),j,0))
-            elif j.getPiece().getColor() != self.getColor():
-                self.validMoves.append(Move(self.getSquare(),j,1))
-        return self.validMoves
+        for i, j in {[1,1],[1,-1],[-1,1],[-1,-1]}:
+            while board.getSquare().getPieceColor not in [None, self.getColor()]:
+                pass
+        return
 
 class Queen(Piece):
-    def __init__(self):
-        super().__init__()
-        # Hidden bishop and rook objects used for getValidMoves
-        self.bishop = Bishop(self.getColor(),self.getSquare())
-        self.rook = Rook(self.getColor(),self.getSquare())
+    def __init__(self, color=None, square=None, board=None):
+        super().__init__(color, square, board)
+        # Hidden bishop and rook objects used for generateValidMoves
+        self.bishop = Bishop(self.getColor(),self.getSquare(),self.board)
+        self.rook = Rook(self.getColor(),self.getSquare(),self.board)
         return
     
-    def getValidMoves(self, board):
-        self.bishop.setSquare(self.getSquare())
-        self.rook.setSquare(self.getSquare())
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
-        self.validMoves += Bishop.getValidMoves(board)
-        self.validMoves += Rook.getValidMoves(board)
-        return self.validMoves
+        self.bishop.setSquare(square)
+        self.rook.setSquare(square)
+        self.validMoves += self.bishop.getValidMoves()
+        self.validMoves += self.rook.getValidMoves()
+        return
 
 class King(Piece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, color=None, square=None, board=None):
+        super().__init__(color, square, board)
         self.hasMoved = False
         return
     
-    def getValidMoves(self, board):
+    def generateValidMoves(self):
+        board = self.board
+        square = self.getSquare()
         self.validMoves = []
         for i in (-1, 0, 1):
             for j in (-1, 0, 1):
                 if board.getSquare(i,j).getPiece() == None:
-                    self.validMoves.append(Move(self.getSquare(),board.getSquare(i,j),0))
+                    self.validMoves.append(Move(self,square,board.getSquare(i,j),0))
                 elif board.getSquare(i,j).getPiece().getColor() != self.getColor():
-                    self.validMoves.append(Move(self.getSquare(),board.getSquare(i,j),1))
+                    self.validMoves.append(Move(self,square,board.getSquare(i,j),1))
         # Check for castling
         
-        return self.validMoves
+        return
     
