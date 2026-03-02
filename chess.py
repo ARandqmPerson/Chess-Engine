@@ -19,6 +19,7 @@ class Game:
     # Input the coordinates of the square you want to move from
     # and the square you want to move to
     # For example, starting with makeMove([4,1],[4,3]) is pawn to e4
+    # Returns string indicating move validity, move type,
     def makeMove(self, squareFromCoords, squareToCoords):
         fromX = squareFromCoords[0]
         fromY = squareFromCoords[1]
@@ -30,7 +31,6 @@ class Game:
         for m in self.board.getAllValidMoves():
             if m.getFromSquare()==squareFrom and m.getToSquare()==squareTo:
                 move = m
-                print(move.getPiece().__class__.__name__+", "+str(squareFromCoords)+"-"+str(squareToCoords))
                 valid = True
         if valid == False:
             return "Invalid move"
@@ -41,7 +41,7 @@ class Game:
             self.moveNumber += 1
             self.whoseMove = "white"
         self.board.generateAllValidMovesAndThreats()
-        return "Valid move"
+        return str(move.getMoveNotation())+"\nValid move\nMove type: "+str(move.getMoveType())
 
 class Board:
     def __init__(self, game=None):
@@ -166,6 +166,17 @@ class Square:
         return self.x
     def getY(self):
         return self.y
+    # Returns square coordinates in standard format
+    def getStandardCoordinates(self):
+        temp = {0:"a",1:"b",2:"c",3:"d",4:"e",5:"f",6:"g",7:"h"}
+        file = temp[self.x]
+        rank = str(self.y + 1)
+        return file + rank
+    # Returns the letter corresponding to this square's file
+    def getFile(self):
+        return chr(self.x + ord('a'))
+    def getRank(self):
+        return str(self.y + 1)
     def getBoard(self):
         return self.board
     def setBoard(self, b):
@@ -205,6 +216,35 @@ class Move:
     
     def getToSquare(self):
         return self.toSquare
+    
+    # Returns a string representing this move in chess notation
+    # TODO: Finish function and write test
+    def getMoveNotation(self):
+        string = ""
+        if self.moveType == 0 or self.moveType == 1:
+            pieceType = self.piece.getPieceType()
+            if pieceType == "Knight": string += "N"
+            if pieceType == "Rook": string += "R"
+            if pieceType == "Bishop": string += "B"
+            if pieceType == "Queen": string += "Q"
+            if pieceType == "King": string += "K"
+            
+            # Looking for ambiguous moves by getting all pieces of same color and type and then
+            # checking if they can move to the same square
+            for piece in self.board.getAllActivePieces(self.pieceColor):
+                if piece.getPieceType() == pieceType:
+                    if piece != self.piece:
+                        for move in piece.getValidMoves():
+                            if move.getToSquare() == self.toSquare:
+                                if move.getToSquare().getX() == self.fromSquare.getX():
+                                    string += str(self.fromSquare.getY()+1)
+                                if move.getToSquare().getY() == self.fromSquare.getY():
+                                    string += self.fromSquare.getX()
+
+        string += self.toSquare.getStandardCoordinates()
+        return string
+        
+    
     # After this move is made, checks which enemy pieces previously threatened the square that
     # the king is currently on; then regenerates their moves to see if they still threaten it
     def leavesKingInCheck(self):
@@ -235,6 +275,7 @@ class Piece:
         self.board = board
         self.validMoves = []
         self.threatenedMoves = []
+        self.pieceType = ""
         # 0 when on the board, 1 when captured
         self.status = 0
         return
@@ -252,6 +293,8 @@ class Piece:
     def setColor(self, c):
         self.color = c
         return
+    def getPieceType(self):
+        return self.pieceType
     def getSquare(self):
         return self.square
     def setSquare(self, s):
@@ -278,6 +321,7 @@ class Piece:
 class Pawn(Piece):
     def __init__(self, firstMoveStatus=0, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.pieceType = "p"
         # 0 if pawn hasn't been moved, 1 if it just moved and en passant is possible,
         # and 2 if it has moved and en passant is not possible
         self.firstMoveStatus = firstMoveStatus
@@ -316,6 +360,7 @@ class Pawn(Piece):
 class Rook(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.pieceType = "r"
         return
     
     def generateValidMovesAndThreats(self, repeat=False):
@@ -348,6 +393,7 @@ class Rook(Piece):
 class Knight(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.pieceType = "n"
         return
     
     def generateValidMovesAndThreats(self, repeat=False):
@@ -372,6 +418,7 @@ class Knight(Piece):
 class Bishop(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.pieceType = "b"
         return 
     
     def generateValidMovesAndThreats(self, repeat=False):
@@ -403,6 +450,7 @@ class Bishop(Piece):
 class Queen(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.pieceType = "q"
         # Hidden bishop and rook objects used for generateValidMovesAndThreats
         self.bishop = Bishop(self.getColor(),self.getSquare(),self.board)
         self.rook = Rook(self.getColor(),self.getSquare(),self.board)
@@ -433,6 +481,7 @@ class King(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
         self.hasMoved = False
+        self.pieceType = "k"
         return
     
     def generateValidMovesAndThreats(self, repeat=False):

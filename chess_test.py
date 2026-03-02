@@ -21,8 +21,8 @@ class TestChessBasic(unittest.TestCase):
         bishop = board.getSquare(2,0).getPiece()
         queen = board.getSquare(3,0).getPiece()
         king = board.getSquare(4,0).getPiece()
-        self.assertEquals(pawn.getValidMoveCoordinates(),[(0,2),(0,3)])
-        self.assertEquals(bishop.getValidMoveCoordinates(),[])
+        self.assertEqual(pawn.getValidMoveCoordinates(),[(0,2),(0,3)])
+        self.assertEqual(bishop.getValidMoveCoordinates(),[])
         self.assertCountEqual(knight.getValidMoveCoordinates(),[(2,2),(0,2)])
     def testInitialThreatenedSquares(self):
         game = self.game
@@ -30,17 +30,17 @@ class TestChessBasic(unittest.TestCase):
         pawn = board.getSquare(0,1).getPiece()
         knight = board.getSquare(1,0).getPiece()
         bishop = board.getSquare(2,0).getPiece()
-        self.assertEquals(pawn.getThreatenedSquareCoordinates(),[(1,2)])
+        self.assertEqual(pawn.getThreatenedSquareCoordinates(),[(1,2)])
         self.assertCountEqual(knight.getThreatenedSquareCoordinates(),[(0,2),(2,2),(3,1)])
         self.assertCountEqual(bishop.getThreatenedSquareCoordinates(),[(1,1),(0,2),(3,1),(4,2),(5,3),(6,4),(7,5)])
     def testMove(self):
         game = self.game
         board = self.board
         game.makeMove([4,1],[4,3])
-        self.assertNotEquals(board.getSquare(4,3).getPiece(),None)
-        self.assertEquals(board.getSquare(4,1).getPiece(),None)
-        self.assertEquals(game.getMoveNumber(),1)
-        self.assertEquals(game.getWhoseMove(),"black")
+        self.assertNotEqual(board.getSquare(4,3).getPiece(),None)
+        self.assertEqual(board.getSquare(4,1).getPiece(),None)
+        self.assertEqual(game.getMoveNumber(),1)
+        self.assertEqual(game.getWhoseMove(),"black")
 
 class TestMultipleMoves(unittest.TestCase):
     def setUp(self):
@@ -53,16 +53,17 @@ class TestMultipleMoves(unittest.TestCase):
         print(self.game.makeMove([7,4],[5,6]))
         return
     def testGameInfo(self):
-        self.assertEquals(self.game.getWhoseMove(),"black")
-        self.assertEquals(self.game.getMoveNumber(),3)
+        self.assertEqual(self.game.getWhoseMove(),"black")
+        self.assertEqual(self.game.getMoveNumber(),3)
         return
     def testPieceLocations(self):
         game = self.game
         for piece in self.board.getAllActivePieces():
             print(piece.getColor()+" "+piece.__class__.__name__+", "+str(piece.getCoordinates()))
         ideallyQueen = game.getBoard().getSquare(5,6).getPiece()
-        self.assertEquals(ideallyQueen.__class__.__name__,"Queen")
+        self.assertEqual(ideallyQueen.__class__.__name__,"Queen")
         return
+    
 
 if __name__ == '__main__':
     unittest.main()
