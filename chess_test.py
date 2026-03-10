@@ -58,11 +58,13 @@ class TestMultipleMoves(unittest.TestCase):
         return
     def testPieceLocations(self):
         game = self.game
-        for piece in self.board.getAllActivePieces():
-            print(piece.getColor()+" "+piece.__class__.__name__+", "+str(piece.getCoordinates()))
+        # for piece in self.board.getAllActivePieces():
+        #     print(piece.getColor()+" "+piece.__class__.__name__+", "+str(piece.getCoordinates()))
         ideallyQueen = game.getBoard().getSquare(5,6).getPiece()
         self.assertEqual(ideallyQueen.__class__.__name__,"Queen")
         return
+    def testIsKingInCheck(self):
+        self.assertEqual(self.game.board.getWhichKingInCheck(), "black")
     
 
 if __name__ == '__main__':
