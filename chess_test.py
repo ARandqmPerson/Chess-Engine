@@ -58,6 +58,7 @@ class TestMultipleMoves(unittest.TestCase):
         return
     def testPieceLocations(self):
         game = self.game
+        # # For testing:
         # for piece in self.board.getAllActivePieces():
         #     print(piece.getColor()+" "+piece.__class__.__name__+", "+str(piece.getCoordinates()))
         ideallyQueen = game.getBoard().getSquare(5,6).getPiece()

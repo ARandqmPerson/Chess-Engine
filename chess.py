@@ -46,13 +46,13 @@ class Game:
             return "Invalid move"
         # Makes the move on the board
         self.moveList.append(move)
-        self.board.makeMove(move)
+        self.board.makeMove(move, True)
         if self.whoseMove == "white":
             self.whoseMove = "black"
         else:
             self.moveNumber += 1
             self.whoseMove = "white"
-        self.board.generateAllValidMovesAndThreats()
+        self.board.generateAllValidMovesAndThreats(True)
         return str(move.getMoveNotation())+"\nValid move\nMove type: "+str(move.getMoveType())
 
 class Board:
@@ -77,7 +77,7 @@ class Board:
         # These will be used to determine checks, checkmates, and stalemates
         self.whiteKing = self.getSquare(4,0).getPiece()
         self.blackKing = self.getSquare(4,7).getPiece()
-        self.generateAllValidMovesAndThreats()
+        self.generateAllValidMovesAndThreats(True)
         return
     
     def setPieces(self, coordsSet, pieceType, color):
@@ -106,11 +106,11 @@ class Board:
     def updateWhichKingInCheck(self):
         whiteKingSquare = self.whiteKing.getSquare()
         blackKingSquare = self.blackKing.getSquare()
-        for move in self.getAllThreatenedMoves("white"):
+        for move in self.getAllValidMoves("white"):
             if move.getToSquare() == blackKingSquare:
                 self.whichKingInCheck = "black"
                 break
-        for move in self.getAllThreatenedMoves("black"):
+        for move in self.getAllValidMoves("black"):
             if move.getToSquare() == whiteKingSquare:
                 self.whichKingInCheck = "white"
                 break
@@ -120,18 +120,44 @@ class Board:
         if color != None:
             return [square.getPiece() for square in self.getAllSquares() if square.getPiece()!=None and square.getPiece().getColor()==color]
         return [square.getPiece() for square in self.getAllSquares() if square.getPiece()!=None]
+   
     # Updates valid moves and threats of all pieces
+    # color parameter should be "white" or "black" if color is specified
+    
+    # NOTE: calls generateValidMovesAndThreats() for each piece, which calls
+    # updateLeavesKingInCheck(), which calls makeMove() and then generateValidMovesAndThreats() again with repeat=True
+    # so that updateLeavesKingInCheck() is not called again, and then undoMove().
 
-    # Note: calls generateValidMovesAndThreats() for each piece, which calls
-    # leavesKingInCheck(), which calls makeMove() and then generateValidMovesAndThreats() again with repeat=True
-    # so that leavesKingInCheck() is not called again, and then undoMove().
-    def generateAllValidMovesAndThreats(self):
+    # NOTE: Valid moves depend on the current threatened moves (so that a move does not leave
+    # the king on a threatened square), but generateValidMovesAndThreats() sometimes generates all valid
+    # moves BEFORE threatened moves, so generateAllValidMovesAndThreats() must be called on all pieces of
+    # the opposite color before pieces of the color who may be in check. To do this, 
+    # pass threatsFirst as True
+
+    def generateAllValidMovesAndThreats(self, threatsFirst=False):
         self.allValidMoves = []
         self.allThreatenedMoves = []
-        for piece in self.getAllActivePieces():
-            piece.generateValidMovesAndThreats()
-            self.allValidMoves += piece.getValidMoves()
-            self.allThreatenedMoves += piece.getThreatenedMoves()
+        whoseMove = self.game.getWhoseMove()
+        if not threatsFirst:
+            for piece in self.getAllActivePieces():
+                piece.generateValidMovesAndThreats()
+                self.allValidMoves += piece.getValidMoves()
+                self.allThreatenedMoves += piece.getThreatenedMoves()
+        else:
+            # Only threatened moves are needed for the opposing side,
+            # only valid moves are needed for the side whose turn it is
+            for piece in self.getAllActivePieces():
+                if piece.getColor() != whoseMove:
+                    piece.generateValidMovesAndThreats()
+                    self.allThreatenedMoves += piece.getThreatenedMoves()
+            for piece in self.getAllActivePieces():
+                # debug
+                print("h5: "+self.squares[7,4].getPiece().getPieceType() if self.squares[7,4].getPiece() != None else "")
+                print("piece: " + piece.getPieceType() + str(piece.getCoordinates()))
+                print("h4: "+self.squares[7,3].getPiece().getPieceType() if self.squares[7,3].getPiece() != None else "")
+                if piece.getColor() == whoseMove:
+                    piece.generateValidMovesAndThreats()
+                    self.allValidMoves += piece.getValidMoves()
         return
     
     def getAllValidMoves(self, color=None):
@@ -145,20 +171,26 @@ class Board:
         return [move for move in self.allThreatenedMoves if move.getPiece().getColor()==color]
 
     # TODO: Add other move types
-    def makeMove(self, move):
-        if move.getMoveType() == 1:
+    # For efficiency, makeMove() only runs 
+    # generateAllValidMovesAndThreats and updateWhichKingInCheck() if updateCheck is True
+    def makeMove(self, move, updateCheck=False):
+        type = move.getMoveType()
+        if type == 1:
             pieceCaptured = move.getPieceCaptured()
             pieceCaptured.setSquare(None)
             pieceCaptured.setStatus(1)
             self.capturedPieces.append(pieceCaptured)
             move.getToSquare().setPiece(move.getPiece())
-        elif move.getMoveType() == 0:
+        if type == 0 or type == 1:
             move.getFromSquare().setPiece(None)
             move.getPiece().setSquare(move.getToSquare())
             move.getToSquare().setPiece(move.getPiece())
-        # If opposite king in check, updates checksKing variable of Move object
-        if self.getWhichKingInCheck() != None:
-            move.setChecksKing(True)
+        if updateCheck:
+            self.generateAllValidMovesAndThreats(True)
+            self.updateWhichKingInCheck()
+            # If opposite king in check, updates checksKing variable of Move object
+            if self.getWhichKingInCheck() != None:
+                move.setChecksKing(True)
         return
     
     def undoMove(self, move, moveSet=None):
@@ -228,6 +260,7 @@ class Move:
         self.toSquare = toSquare
         self.moveType = moveType
         self.checksKing = False
+        self.leavesKingInCheck = False
         self.pieceColor = self.piece.getColor()
         self.board = self.piece.getBoard()
         self.game = self.board.game
@@ -243,6 +276,12 @@ class Move:
     def setChecksKing(self, c):
         self.checksKing = c
         return
+    
+    # If update is False, does not run updateLeavesKingInCheck()
+    def getLeavesKingInCheck(self, update=True):
+        if update:
+            self.updateLeavesKingInCheck()
+        return self.leavesKingInCheck
     
     def getMoveType(self):
         return self.moveType
@@ -291,10 +330,11 @@ class Move:
     
     # After this move is made, checks which enemy pieces previously threatened the square that
     # the king is currently on; then regenerates their moves to see if they still threaten it
+    # Updates leavesKingInCheck accordingly
 
     # Works in a similar way to getWhichKingInCheck(), but is significantly more efficient
-    def leavesKingInCheck(self):
-        result = False
+
+    def updateLeavesKingInCheck(self):
         king = self.board.getKing(self.piece.getColor())
         oppositeColor = "white" if self.piece.getColor()=="black" else "black"
         kingSquare = king.getSquare()
@@ -303,9 +343,13 @@ class Move:
             if move.getToSquare() == kingSquare:
                 threateningPieces.append(move.getPiece())
         self.board.makeMove(self)
-        result = self.board.getWhichKingInCheck() == self.piece.getColor()
+        for piece in threateningPieces:
+            piece.generateValidMovesAndThreats()
+            for move in piece.getValidMoves():
+                if move.getToSquare() == kingSquare:
+                    self.leavesKingInCheck = True
         self.board.undoMove(self)
-        return result
+        return
     
 
 class Piece:
@@ -369,7 +413,7 @@ class Pawn(Piece):
         self.firstMoveStatus = firstMoveStatus
     
     # Updates valid moves and threatened squares for this piece
-    # Prevents recursion (leavesKingInCheck() calls this function) by using repeat parameter
+    # Prevents recursion (updateLeavesKingInCheck() calls this function) by using repeat parameter
     def generateValidMovesAndThreats(self, repeat=False):
         board = self.board
         square = self.getSquare()
@@ -397,8 +441,7 @@ class Pawn(Piece):
                 self.validMoves.append(Move(self,square,current,1))
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
-                    print("test2")
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
 
@@ -431,7 +474,7 @@ class Rook(Piece):
                 inc += 1
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
 
@@ -456,7 +499,7 @@ class Knight(Piece):
                 self.validMoves.append(Move(self, square, i, 1))
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
 
@@ -488,7 +531,7 @@ class Bishop(Piece):
                 inc += 1
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
 
@@ -518,7 +561,7 @@ class Queen(Piece):
             self.threatenedMoves.append(move)
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
 
@@ -546,6 +589,6 @@ class King(Piece):
                     self.validMoves.append(Move(self,square,current,1))
         if not repeat:
             for move in self.validMoves:
-                if move.leavesKingInCheck():
+                if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
