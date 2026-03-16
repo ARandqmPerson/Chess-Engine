@@ -192,16 +192,16 @@ class Board:
         return
     
     def undoMove(self, move):
+        if move.moveType == 0 or move.moveType == 1:
+            move.getFromSquare().setPiece(move.getPiece())
+            move.getPiece().setSquare(move.getFromSquare())
+            move.getToSquare().setPiece(None)
         if move.moveType == 1:
             pieceCaptured = move.getPieceCaptured()
             pieceCaptured.setSquare(move.getToSquare())
             pieceCaptured.setStatus(0)
             self.capturedPieces.remove(pieceCaptured)
             move.getToSquare().setPiece(pieceCaptured)
-        if move.moveType == 0 or move.moveType == 1:
-            move.getFromSquare().setPiece(move.getPiece())
-            move.getPiece().setSquare(move.getFromSquare())
-            move.getToSquare().setPiece(None)
         return
 
 class Square:
