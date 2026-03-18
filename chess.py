@@ -30,7 +30,7 @@ class Game:
     # and the square you want to move to
     # For example, starting with makeMove([4,1],[4,3]) is pawn to e4
     # Returns string indicating move validity, move type, and notation
-    def makeMove(self, squareFromCoords, squareToCoords):
+    def makeMove(self, squareFromCoords=None, squareToCoords=None):
         fromX = squareFromCoords[0]
         fromY = squareFromCoords[1]
         toX = squareToCoords[0]
@@ -44,6 +44,7 @@ class Game:
                 valid = True
         if valid == False:
             return "Invalid move"
+        move.updateMoveNotation()
         # Makes the move on the board
         self.moveList.append(move)
         self.board.makeMove(move, True)
@@ -52,6 +53,14 @@ class Game:
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
         self.board.generateAllValidMovesAndThreats(True)
         return str(move.getMoveNotation())+"\nValid move\nMove type: "+str(move.getMoveType())
+    
+    # Does the same thing as makeMove() but accepts standard notation
+    def makeMoveUsingNotation(self, notation):
+        for move in self.board.getAllValidMoves():
+            if move.updateMoveNotation() == notation:
+                return self.makeMove(move.getFromSquare().getCoordinates(),move.getToSquare().getCoordinates())
+        return "Invalid Move"
+
     
 class Board:
     def __init__(self, game=None):
@@ -242,7 +251,7 @@ class Square:
         return file + rank
     # Returns the letter corresponding to this square's file
     def getFile(self):
-        return chr(self.x + ord('a'))
+        return self.getStandardCoordinates()[0]
     def getRank(self):
         return str(self.y + 1)
     def getBoard(self):
@@ -250,7 +259,7 @@ class Square:
     def setBoard(self, b):
         self.board = b
         return
-# Move types: 0=Normal move, 1=capture, 2=castling, 3=promotion, 4=en passant, 5=threat
+# Move types: 0=normal move, 1=capture, 2=castling, 3=promotion, 4=en passant, 5=threat
 class Move:
     def __init__(self, pieceMoved=None, fromSquare=None, toSquare=None, moveType=None):
         self.piece = pieceMoved
@@ -259,6 +268,7 @@ class Move:
         self.moveType = moveType
         self.checksKing = False
         self.leavesKingInCheck = False
+        self.notation = None
         self.pieceColor = self.piece.getColor()
         self.board = self.piece.getBoard()
         self.game = self.board.game
@@ -300,30 +310,42 @@ class Move:
     def getToSquare(self):
         return self.toSquare
     
-    # Returns a string representing this move in chess notation
-    # TODO: Finish function and write test
     def getMoveNotation(self):
+        return self.notation
+
+    # Updates and returns self.notation, a string representing this move in chess notation
+    # TODO: Update for other move types once makeMove() has been updated
+    # NOTE: Must be called before this move is made, or the target square will already be occupied
+    # by the current piece and thus not recognized as a valid move for another piece that could've moved there
+    def updateMoveNotation(self):
         string = ""
         if self.moveType == 0 or self.moveType == 1:
             pieceType = self.piece.getPieceType()
-            string += pieceType.upper()
+            if pieceType == "p":
+                if self.moveType == 1:
+                    string += self.fromSquare.getFile()
+            else:
+                string += pieceType.upper()
             
             # Looking for ambiguous moves by getting all pieces of same color and type and then
-            # checking if they can move to the same square
-            for piece in self.board.getAllActivePieces(self.pieceColor):
-                if piece.getPieceType() == pieceType:
-                    if piece != self.piece:
+            # checking if they can move to the same square (pawns do not need disambiguation)
+            # NOTE: may not account for double disambiguation (highly unrealistic scenario)
+            if self.piece.getPieceType() != "p":
+                for piece in self.board.getAllActivePieces(self.pieceColor):
+                    if piece != self.piece and piece.getPieceType() == self.piece.getPieceType():
                         for move in piece.getValidMoves():
-                            if move.getToSquare() == self.toSquare:
-                                if move.getToSquare().getX() == self.fromSquare.getX():
-                                    string += str(self.fromSquare.getY()+1)
-                                if move.getToSquare().getY() == self.fromSquare.getY():
-                                    string += self.fromSquare.getX()
+                            if move.getToSquare() == self.getToSquare():
+                                if piece.getSquare().getFile() == self.piece.getSquare().getFile():
+                                    string += self.piece.getSquare().getRank()
+                                else:
+                                    string += self.piece.getSquare().getFile()
+
             if self.moveType == 1: string += "x"
         string += self.toSquare.getStandardCoordinates()
         if self.getChecksKing():
             string += "+"
-        return string
+        self.notation = string
+        return self.notation
         
     
     # After this move is made, checks which enemy pieces previously threatened the square that

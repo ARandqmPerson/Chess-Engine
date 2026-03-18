@@ -66,7 +66,32 @@ class TestMultipleMoves(unittest.TestCase):
         return
     def testIsKingInCheck(self):
         self.assertEqual(self.game.board.getWhichKingInCheck(), "black")
-    
+    def testMoveListAndNotation(self):
+        moveList = self.game.getMoveList()
+        self.game.displayMoveList()
+        self.assertEqual(moveList[0].getMoveNotation(), "e4")
+        self.assertEqual(moveList[4].getMoveNotation(), "Qxf7+")
+
+class TestAmbiguousMoves(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.getBoard()
+        # Plays 1. d3 d6 2. Nf3 Nf6 3. Nbd2 Nbd7 4. Nd4 Nd5 5. N2b3 N7b6
+        print(self.game.makeMoveUsingNotation("d3"))
+        print(self.game.makeMoveUsingNotation("d6"))
+        print(self.game.makeMoveUsingNotation("Nf3"))
+        print(self.game.makeMoveUsingNotation("Nf6"))
+        print(self.game.makeMove([1,0],[3,1]))
+        print(self.game.makeMove([1,7],[3,6]))
+        print(self.game.makeMoveUsingNotation("Nd4"))
+        print(self.game.makeMoveUsingNotation("Nd5"))
+        print(self.game.makeMove([3,1],[1,2]))
+        print(self.game.makeMove([3,6],[1,5]))
+    def testAmbiguousMoves(self):
+        print(self.game.getMoveList()[4].getMoveNotation())
+        self.assertEqual(self.game.getMoveList()[4].getMoveNotation(),"Nbd2")
+        self.assertEqual(self.game.getMoveList()[8].getMoveNotation(),"N2b3")
+
 
 if __name__ == '__main__':
     unittest.main()
