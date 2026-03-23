@@ -1,12 +1,9 @@
 class Game:
-    def __init__(self, moveNumber=1, whoseMove="white", board=None, moveList=[]):
+    def __init__(self, moveNumber=1, whoseMove="white", board=None, moves=None):
         self.moveNumber = moveNumber
         self.whoseMove = whoseMove
-        self.moveList = moveList
-        if board == None:
-            self.board = Board(self)
-        else:
-            self.board = board
+        self.moveList = [] if moves == None else moves
+        self.board = Board(self) if board == None else board
         return
     
     # TODO: Finish getMoveNotation()
@@ -35,7 +32,6 @@ class Game:
         # Makes the move on the board
         self.moveList.append(move)
         self.board.makeMove(move, True)
-        move.updateMoveNotation()
         if self.whoseMove == "black":
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
@@ -45,7 +41,7 @@ class Game:
     # Does the same thing as makeMove() but accepts standard notation
     def makeMoveUsingNotation(self, notation):
         for move in self.board.allValidMoves:
-            if move.updateMoveNotation() == notation:
+            if move.notation == notation:
                 return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates)
         return "Invalid Move"
 
@@ -159,9 +155,13 @@ class Board:
         return [move for move in self.allThreatenedMoves if move.piece.color==color]
 
     # TODO: Add other move types
-    # For efficiency, makeMove() only runs 
+    # NOTE: For efficiency, makeMove() only runs 
     # generateAllValidMovesAndThreats and updateWhichKingInCheck() if updateCheck is True
+    # NOTE: To update notation, disambiguation must be checked BEFORE the move is made,
+    # but whether the move is a check can only be determined AFTER it's been made, so it's
+    # automatically done when the function updates for check
     def makeMove(self, move, updateCheck=False):
+        move.updateNotation()
         type = move.type
         if type == 1:
             move.pieceCaptured.setSquare(None)
@@ -181,6 +181,7 @@ class Board:
             # If opposite king in check, updates checksKing variable of Move object
             if self.whichKingInCheck != None:
                 move.setChecksKing(True)
+                move.notation += "+"
         return
     
     def undoMove(self, move):
@@ -263,10 +264,9 @@ class Move:
         self.piece = p
         return
 
-    # Updates and returns self.notation, a string representing this move in chess notation
-    # TODO: Update for other move types once makeMove() has been updated
-    # NOTE: This function must be called after this move is made
-    def updateMoveNotation(self):
+    # Updates notation to account for piece type, whether the move is a capture, and disambiguation
+    # Does NOT account for check or checkmate, this must be done after the move is made
+    def updateNotation(self):
         string = ""
         if self.type == 0 or self.type == 1:
             pieceType = self.piece.type
@@ -275,27 +275,22 @@ class Move:
                     string += self.fromSquare.getFile()
             else:
                 string += pieceType.upper()
-            
-            # Looking for ambiguous moves by getting all pieces of same color and type and then
-            # checking if they can move to the same square (pawns do not need disambiguation)
-            # NOTE: may not account for double disambiguation (highly unrealistic scenario)
-            if self.piece.type != "p":
+        # Checks for pieces (except pawns) of the same color and type that can also move to the target
+        # square, and updates notation accordingly if they can (also returns notation)
+        if self.piece.type != "p":
                 for piece in self.board.getAllActivePieces(self.color):
                     if piece != self.piece and piece.type == self.piece.type:
                         for move in piece.validMoves:
-                            if move.toSquare == self.piece.square:
+                            if move.toSquare == self.toSquare:
                                 if piece.square.getFile() == self.piece.square.getFile():
                                     string += self.piece.square.getRank()
                                 else:
                                     string += self.piece.square.getFile()
-            if self.type == 1: string += "x"
+        if self.type == 1: string += "x"
         string += self.toSquare.getStandardCoordinates()
-        if self.getChecksKing():
-            string += "+"
         self.notation = string
         return self.notation
         
-    
     # After this move is made, checks which enemy pieces previously threatened the square that
     # the king is currently on; then regenerates their moves to see if they still threaten it
     # Updates leavesKingInCheck accordingly

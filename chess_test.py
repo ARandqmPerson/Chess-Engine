@@ -58,9 +58,6 @@ class TestMultipleMoves(unittest.TestCase):
         return
     def testPieceLocations(self):
         game = self.game
-        # # For testing:
-        # for piece in self.board.getAllActivePieces():
-        #     print(piece.getColor()+" "+piece.__class__.__name__+", "+str(piece.getCoordinates()))
         ideallyQueen = game.board.getSquare(5,6).piece
         self.assertEqual(ideallyQueen.__class__.__name__,"Queen")
         return
@@ -71,26 +68,22 @@ class TestMultipleMoves(unittest.TestCase):
         self.assertEqual(self.game.moveList[0].notation, "e4")
         self.assertEqual(self.game.moveList[4].notation, "Qxf7+")
 
-class TestAmbiguousMoves(unittest.TestCase):
+class TestMoveNotation(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        # Plays 1. d3 d6 2. Nf3 Nf6 3. Nbd2 Nbd7 4. Nd4 Nd5 5. N2b3 N7b6
+    # Will cause an error if the move notation isn't recognized
+    def testAmbiguousMoveNotation(self):
         print(self.game.makeMoveUsingNotation("d3"))
         print(self.game.makeMoveUsingNotation("d6"))
         print(self.game.makeMoveUsingNotation("Nf3"))
         print(self.game.makeMoveUsingNotation("Nf6"))
-        print(self.game.makeMove([1,0],[3,1]))
-        print(self.game.makeMove([1,7],[3,6]))
+        print(self.game.makeMoveUsingNotation("Nbd2"))
+        print(self.game.makeMoveUsingNotation("Nbd7"))
         print(self.game.makeMoveUsingNotation("Nd4"))
         print(self.game.makeMoveUsingNotation("Nd5"))
-        print(self.game.makeMove([3,1],[1,2]))
-        print(self.game.makeMove([3,6],[1,5]))
-    def testAmbiguousMoves(self):
-        print(self.game.moveList[4].notation)
-        self.assertEqual(self.game.moveList[4].notation,"Nbd2")
-        self.assertEqual(self.game.moveList[8].notation,"N2b3")
-
-
+        print(self.game.makeMoveUsingNotation("N2b3"))
+        print(self.game.makeMoveUsingNotation("N7b6"))
+    
 if __name__ == '__main__':
     unittest.main()
