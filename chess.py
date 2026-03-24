@@ -36,7 +36,7 @@ class Game:
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
         self.board.generateAllValidMovesAndThreats(True)
-        return str(move.notation)+"\nValid move\nMove type: "+str(move.type)
+        return str(move.notation)+"; Valid move; Move type: "+str(move.type)
     
     # Does the same thing as makeMove() but accepts standard notation
     def makeMoveUsingNotation(self, notation):
@@ -48,6 +48,15 @@ class Game:
     
 class Board:
     def __init__(self, game=None):
+        # Similarly to the Game class's moveList, this list keeps track of moves made on the board.
+        # One item on the list represents a half-move that has been played. However, the list only tracks
+        # which pawn on the board can be captured en passant on any given move. The downside of
+        # updating this list is that it must be done every time makeMove() is called, but it's
+        # necessary because it otherwise wouldn't be possible to track en passant status after
+        # undoMove() is called.
+        self.whichPawnMoved2 = []
+        # whichPawnMoved2[-1] causes an error when the list is empty
+        self.whichPawnMoved2.append(None)
         self.game = game
         self.capturedPieces = []
         self.whichKingInCheck = None
@@ -163,15 +172,20 @@ class Board:
     def makeMove(self, move, updateCheck=False):
         move.updateNotation()
         type = move.type
-        if type == 1:
+        if type in (1,4):
             move.pieceCaptured.setSquare(None)
             move.pieceCaptured.setStatus(1)
             self.capturedPieces.append(move.pieceCaptured)
             move.toSquare.setPiece(move.piece)
-        if type == 0 or type == 1:
+        if type in (0,1,4):
             move.fromSquare.setPiece(None)
             move.piece.setSquare(move.toSquare)
             move.toSquare.setPiece(move.piece)
+        # If this move is a pawn moving two squares forward, add it to the list
+        if type == 0 and move.piece.type == "p" and abs(move.toSquare.y-move.fromSquare.y) == 2:
+            self.whichPawnMoved2.append(move.piece)
+        else:
+            self.whichPawnMoved2.append(None)
         if updateCheck:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
@@ -194,6 +208,12 @@ class Board:
             move.pieceCaptured.setStatus(0)
             self.capturedPieces.remove(move.pieceCaptured)
             move.toSquare.setPiece(move.pieceCaptured)
+        if move.type == 4:
+            move.pieceCaptured.setSquare(self.getSquare(move.toSquare.x,move.fromSquare.y))
+            self.getSquare(move.toSquare.x,move.fromSquare.y).setPiece(move.pieceCaptured)
+            move.pieceCaptured.setStatus(0)
+            self.capturedPieces.remove(move.pieceCaptured)
+        self.whichPawnMoved2.pop()
         return
 
 class Square:
@@ -245,7 +265,12 @@ class Move:
         self.color = self.piece.color
         self.board = self.piece.board
         self.game = self.board.game
-        self.pieceCaptured = toSquare.piece if moveType == 1 else None
+        if moveType == 1:
+            self.pieceCaptured = toSquare.piece
+        if moveType == 4:
+            self.pieceCaptured = self.board.getSquare(toSquare.x,fromSquare.y).piece
+        if moveType == 0:
+            self.pieceCaptured = None
     
     def getChecksKing(self):
         return self.checksKing
@@ -268,7 +293,7 @@ class Move:
     # Does NOT account for check or checkmate, this must be done after the move is made
     def updateNotation(self):
         string = ""
-        if self.type == 0 or self.type == 1:
+        if self.type in (0,1,4):
             pieceType = self.piece.type
             if pieceType == "p":
                 if self.type == 1:
@@ -364,7 +389,6 @@ class Pawn(Piece):
             inc = 1
         else:
             inc = -1
-
         if board.getSquare(self.x, self.y+inc).piece == None:
             self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
             if board.getSquare(self.x, self.y+2*inc).piece == None and self.firstMoveStatus == 0:
@@ -379,11 +403,36 @@ class Pawn(Piece):
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
                 self.validMoves.append(Move(self,square,current,1))
+        # If an enemy pawn just moved 2 squares and this pawn is next to it,
+        # add en passant as a valid move
+        temp = self.board.whichPawnMoved2[-1]
+        if temp != None:
+            if temp.color != self.color:
+                if self in temp.getAdjacentEnemyPawns():
+                    targetSquare = board.getSquare(temp.x, temp.y+1) if self.color == "white" else board.getSquare(temp.x, temp.y-1)
+                    self.validMoves.append(Move(self,square,targetSquare,4))
         if not repeat:
             for move in self.validMoves:
                 if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
         return
+    
+    # Returns a list of enemy pawns that are next to this pawn; this method should be used
+    # to update which pawns can capture en passant
+    def getAdjacentEnemyPawns(self):
+        board = self.board
+        result = []
+        if self.x != 0:
+            target = board.getSquare(self.x-1,self.y)
+            if target.pieceColor not in (None, self.color):
+                if target.piece.type == "p":
+                    result += [target.piece]
+        if self.x != 7:
+            target = board.getSquare(self.x+1,self.y)
+            if target.pieceColor not in (None, self.color):
+                if target.piece.type == "p":
+                    result += [target.piece]
+        return result
 
 class Rook(Piece):
     def __init__(self, color=None, square=None, board=None):

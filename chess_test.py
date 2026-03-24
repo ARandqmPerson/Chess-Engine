@@ -84,6 +84,19 @@ class TestMoveNotation(unittest.TestCase):
         print(self.game.makeMoveUsingNotation("Nd5"))
         print(self.game.makeMoveUsingNotation("N2b3"))
         print(self.game.makeMoveUsingNotation("N7b6"))
+
+class TestEnPassant(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.board
+    def testEnPassant(self):
+        print(self.game.makeMoveUsingNotation("e4"))
+        print(self.game.makeMoveUsingNotation("e6"))
+        print(self.game.makeMoveUsingNotation("e5"))
+        print(self.game.makeMoveUsingNotation("d5"))
+        print(self.game.makeMoveUsingNotation("exd6"))
+        self.assertEqual(self.board.getSquare(3,5).piece.type,"p")
+        self.assertEqual(self.board.getSquare(3,4).piece,None)  
     
 if __name__ == '__main__':
     unittest.main()
