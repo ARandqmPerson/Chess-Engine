@@ -46,11 +46,11 @@ class TestMultipleMoves(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        print(self.game.makeMove([4,1],[4,3]))
-        print(self.game.makeMove([4,6],[4,4]))
-        print(self.game.makeMove([3,0],[7,4]))
-        print(self.game.makeMove([6,7],[5,5]))
-        print(self.game.makeMove([7,4],[5,6]))
+        self.game.makeMove([4,1],[4,3])
+        self.game.makeMove([4,6],[4,4])
+        self.game.makeMove([3,0],[7,4])
+        self.game.makeMove([6,7],[5,5])
+        self.game.makeMove([7,4],[5,6])
         return
     def testGameInfo(self):
         self.assertEqual(self.game.whoseMove,"black")
@@ -74,29 +74,31 @@ class TestMoveNotation(unittest.TestCase):
         self.board = self.game.board
     # Will cause an error if the move notation isn't recognized
     def testAmbiguousMoveNotation(self):
-        print(self.game.makeMoveUsingNotation("d3"))
-        print(self.game.makeMoveUsingNotation("d6"))
-        print(self.game.makeMoveUsingNotation("Nf3"))
-        print(self.game.makeMoveUsingNotation("Nf6"))
-        print(self.game.makeMoveUsingNotation("Nbd2"))
-        print(self.game.makeMoveUsingNotation("Nbd7"))
-        print(self.game.makeMoveUsingNotation("Nd4"))
-        print(self.game.makeMoveUsingNotation("Nd5"))
-        print(self.game.makeMoveUsingNotation("N2b3"))
-        print(self.game.makeMoveUsingNotation("N7b6"))
+        self.game.makeMoveUsingNotation("d3")
+        self.game.makeMoveUsingNotation("d6")
+        self.game.makeMoveUsingNotation("Nf3")
+        self.game.makeMoveUsingNotation("Nf6")
+        self.game.makeMoveUsingNotation("Nbd2")
+        self.game.makeMoveUsingNotation("Nbd7")
+        self.game.makeMoveUsingNotation("Nd4")
+        self.game.makeMoveUsingNotation("Nd5")
+        self.game.makeMoveUsingNotation("N2b3")
+        self.game.makeMoveUsingNotation("N7b6")
 
 class TestEnPassant(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
+    # Tests whether en passant is correctly recognized as valid and played
+    # and whether it's correctly recognized as invalid
     def testEnPassant(self):
-        print(self.game.makeMoveUsingNotation("e4"))
-        print(self.game.makeMoveUsingNotation("e6"))
-        print(self.game.makeMoveUsingNotation("e5"))
-        print(self.game.makeMoveUsingNotation("d5"))
-        print(self.game.makeMoveUsingNotation("exd6"))
+        self.game.makeMoveUsingNotation("e4")
+        self.game.makeMoveUsingNotation("e6")
+        self.game.makeMoveUsingNotation("e5")
+        self.game.makeMoveUsingNotation("d5")
+        self.game.makeMoveUsingNotation("exd6")
         self.assertEqual(self.board.getSquare(3,5).piece.type,"p")
-        self.assertEqual(self.board.getSquare(3,4).piece,None)  
-    
+        self.assertEqual(self.board.getSquare(3,4).piece,None)
+
 if __name__ == '__main__':
     unittest.main()

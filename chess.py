@@ -36,7 +36,8 @@ class Game:
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
         self.board.generateAllValidMovesAndThreats(True)
-        return str(move.notation)+"; Valid move; Move type: "+str(move.type)
+        print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
+        return
     
     # Does the same thing as makeMove() but accepts standard notation
     def makeMoveUsingNotation(self, notation):
@@ -177,6 +178,8 @@ class Board:
             move.pieceCaptured.setStatus(1)
             self.capturedPieces.append(move.pieceCaptured)
             move.toSquare.setPiece(move.piece)
+        if type == 4:
+            self.getSquare(move.toSquare.x, move.fromSquare.y).setPiece(None)
         if type in (0,1,4):
             move.fromSquare.setPiece(None)
             move.piece.setSquare(move.toSquare)
@@ -199,7 +202,7 @@ class Board:
         return
     
     def undoMove(self, move):
-        if move.type == 0 or move.type == 1:
+        if move.type in (0,1,4):
             move.fromSquare.setPiece(move.piece)
             move.piece.setSquare(move.fromSquare)
             move.toSquare.setPiece(None)
@@ -311,7 +314,10 @@ class Move:
                                     string += self.piece.square.getRank()
                                 else:
                                     string += self.piece.square.getFile()
-        if self.type == 1: string += "x"
+        if self.type in (1,4):
+            if self.piece.type == "p":
+                string += self.fromSquare.getFile()
+            string += "x"
         string += self.toSquare.getStandardCoordinates()
         self.notation = string
         return self.notation
