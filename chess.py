@@ -87,8 +87,12 @@ class Board:
             self.getSquare(i,j).setPiece(piece)
         return
     
-
-    def getSquare(self, targetX, targetY):
+    # Accepts x, y coordinates or standard notation
+    def getSquare(self, targetX, targetY, notation=None):
+        if notation != None:
+            for square in self.squares:
+                if square.notation == notation:
+                    return square
         return self.squares.get((targetX,targetY))
     
     def getAllSquares(self):
@@ -189,6 +193,9 @@ class Board:
             self.whichPawnMoved2.append(move.piece)
         else:
             self.whichPawnMoved2.append(None)
+        # If this is a king move, the king can no longer castle
+        if self.piece.type in ("k","r"):
+            self.piece.hasMoved = True
         if updateCheck:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
@@ -231,11 +238,8 @@ class Square:
         # x and y variables for convenience
         self.x = self.coordinates[0]
         self.y = self.coordinates[1]
-        return
-    def setCoordinates(self, c):
-        self.coordinates = c
-        self.x = self.coordinates[0]
-        self.y = self.coordinates[1]
+        # Square's coordinates in notation for convenience
+        self.notation = self.getCoordinateNotation()
         return
     def setPiece(self, p):
         self.piece = p
@@ -245,14 +249,14 @@ class Square:
             self.pieceColor = None
         return
     # Returns square coordinates in standard format
-    def getStandardCoordinates(self):
+    def getCoordinateNotation(self):
         temp = {0:"a",1:"b",2:"c",3:"d",4:"e",5:"f",6:"g",7:"h"}
         file = temp[self.x]
         rank = str(self.y + 1)
         return file + rank
     # Returns the letter corresponding to this square's file
     def getFile(self):
-        return self.getStandardCoordinates()[0]
+        return self.notation[0]
     def getRank(self):
         return str(self.y + 1)
 # Move types: 0=normal move, 1=capture, 2=castling, 3=promotion, 4=en passant, 5=threat
@@ -318,7 +322,7 @@ class Move:
             if self.piece.type == "p":
                 string += self.fromSquare.getFile()
             string += "x"
-        string += self.toSquare.getStandardCoordinates()
+        string += self.toSquare.notation()
         self.notation = string
         return self.notation
         
@@ -443,6 +447,7 @@ class Pawn(Piece):
 class Rook(Piece):
     def __init__(self, color=None, square=None, board=None):
         super().__init__(color, square, board)
+        self.hasMoved = False
         self.type = "r"
         return
     
@@ -582,6 +587,12 @@ class King(Piece):
                     self.validMoves.append(Move(self,square,current,0))
                 elif current.pieceColor != self.color:
                     self.validMoves.append(Move(self,square,current,1))
+        # Castling logic
+        if self.hasMoved == False:
+            target = board.getSquare(7,self.y)
+            if target.piece != None and target.piece.type == "r" and target.piece.hasMoved == False:
+                # WIP
+
         if not repeat:
             for move in self.validMoves:
                 if move.getLeavesKingInCheck():

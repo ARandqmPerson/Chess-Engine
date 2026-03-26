@@ -100,5 +100,21 @@ class TestEnPassant(unittest.TestCase):
         self.assertEqual(self.board.getSquare(3,5).piece.type,"p")
         self.assertEqual(self.board.getSquare(3,4).piece,None)
 
+class TestCastling(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.board
+    def testCastlingKingside(self):
+        self.game.makeMoveUsingNotation("e4")
+        self.game.makeMoveUsingNotation("e5")
+        self.game.makeMoveUsingNotation("Nf3")
+        self.game.makeMoveUsingNotation("Nc6")
+        self.game.makeMoveUsingNotation("Bb5")
+        self.game.makeMoveUsingNotation("Nf6")
+        self.game.makeMoveUsingNotation("O-O")
+        self.assertEqual(self.board.getSquare(notation="g1").piece.type, "k")
+        self.assertEqual(self.board.getSquare(notation="f1").piece.type, "r")
+    # TODO: Add tests for invalid castling and queenside castling
+
 if __name__ == '__main__':
     unittest.main()
