@@ -88,11 +88,11 @@ class Board:
         return
     
     # Accepts x, y coordinates or standard notation
-    def getSquare(self, targetX, targetY, notation=None):
+    def getSquare(self, targetX=None, targetY=None, notation=None):
         if notation != None:
             for square in self.squares:
-                if square.notation == notation:
-                    return square
+                if self.squares.get(square).notation == notation:
+                    return self.squares.get(square)
         return self.squares.get((targetX,targetY))
     
     def getAllSquares(self):
@@ -177,6 +177,19 @@ class Board:
     def makeMove(self, move, updateCheck=False):
         move.updateNotation()
         type = move.type
+        if type == 2:
+            move.fromSquare.setPiece(None)
+            move.toSquare.setPiece(move.piece)
+            move.piece.setSquare(move.toSquare)
+            if move.toSquare.x == 6:
+                rook = self.board.getSquare(7,move.toSquare.y).piece
+                target = self.board.getSquare(5,move.toSquare.y)
+            else:
+                rook = self.board.getSquare(2,move.toSquare.y).piece
+                target = self.board.getSquare(3,move.toSquare.y)
+            rook.square.setPiece(None)
+            rook.setSquare(target)
+            target.setPiece(rook)
         if type in (1,4):
             move.pieceCaptured.setSquare(None)
             move.pieceCaptured.setStatus(1)
@@ -194,8 +207,8 @@ class Board:
         else:
             self.whichPawnMoved2.append(None)
         # If this is a king move, the king can no longer castle
-        if self.piece.type in ("k","r"):
-            self.piece.hasMoved = True
+        if move.piece.type in ("k","r"):
+            move.piece.hasMoved = True
         if updateCheck:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
@@ -299,6 +312,11 @@ class Move:
     # Updates notation to account for piece type, whether the move is a capture, and disambiguation
     # Does NOT account for check or checkmate, this must be done after the move is made
     def updateNotation(self):
+        if self.type == 2:
+            if self.toSquare.x == 2:
+                return "O-O-O"
+            else:
+                return "O-O"
         string = ""
         if self.type in (0,1,4):
             pieceType = self.piece.type
@@ -322,7 +340,7 @@ class Move:
             if self.piece.type == "p":
                 string += self.fromSquare.getFile()
             string += "x"
-        string += self.toSquare.notation()
+        string += self.toSquare.notation
         self.notation = string
         return self.notation
         
@@ -587,12 +605,36 @@ class King(Piece):
                     self.validMoves.append(Move(self,square,current,0))
                 elif current.pieceColor != self.color:
                     self.validMoves.append(Move(self,square,current,1))
-        # Castling logic
-        if self.hasMoved == False:
+        # Castling logic; adds castling as a valid move if the king and rook haven't moved,
+        # the two adjacent squares are empty and not under attack, and the king isn't in check
+        if self.hasMoved == False and board.whichKingInCheck != self.color:
+            # Kingside castling
             target = board.getSquare(7,self.y)
             if target.piece != None and target.piece.type == "r" and target.piece.hasMoved == False:
-                # WIP
-
+                targetA = board.getSquare(5,self.y)
+                targetB = board.getSquare(6,self.y)
+                if targetA.piece == None and targetB.piece == None:
+                    oppositeColor = "white" if self.color == "black" else "black"
+                    result = True
+                    for move in board.getValidMoves(oppositeColor):
+                        if move.toSquare == targetA or move.toSquare == targetB:
+                            result = False
+                        if result:
+                            self.validMoves.append(Move(self,square,targetB,2))
+            # Queenside castling
+            target = board.getSquare(0,self.y)
+            if target.piece != None and target.piece.type == "r" and target.piece.hasMoved == False:
+                targetA = board.getSquare(3,self.y)
+                targetB = board.getSquare(2,self.y)
+                if targetA.piece == None and targetB.piece == None:
+                    oppositeColor = "white" if self.color == "black" else "black"
+                    result = True
+                    for move in board.getValidMoves(oppositeColor):
+                        if move.toSquare == targetA or move.toSquare == targetB:
+                            result = False
+                        if result:
+                            self.validMoves.append(Move(self,square,targetB,2))
+    
         if not repeat:
             for move in self.validMoves:
                 if move.getLeavesKingInCheck():

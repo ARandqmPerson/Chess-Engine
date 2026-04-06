@@ -106,15 +106,23 @@ class TestCastling(unittest.TestCase):
         self.board = self.game.board
     def testCastlingKingside(self):
         self.game.makeMoveUsingNotation("e4")
-        self.game.makeMoveUsingNotation("e5")
-        self.game.makeMoveUsingNotation("Nf3")
+        self.game.makeMoveUsingNotation("d5")
+        self.game.makeMoveUsingNotation("exd5")
+        self.game.makeMoveUsingNotation("Qxd5")
+        self.game.makeMoveUsingNotation("d4")
         self.game.makeMoveUsingNotation("Nc6")
-        self.game.makeMoveUsingNotation("Bb5")
-        self.game.makeMoveUsingNotation("Nf6")
+        self.game.makeMoveUsingNotation("Nf3")
+        self.game.makeMoveUsingNotation("Bg4")
+        self.game.makeMoveUsingNotation("Be2")
+        self.game.makeMoveUsingNotation("e6")
         self.game.makeMoveUsingNotation("O-O")
         self.assertEqual(self.board.getSquare(notation="g1").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="f1").piece.type, "r")
-    # TODO: Add tests for invalid castling and queenside castling
+    def testCastlingQueenside(self):
+        self.game.makeMoveUsingNotation("O-O-O")
+        self.assertEqual(self.board.getSquare(notation="c8").piece.type, "k")
+        self.assertEqual(self.board.getSquare(notation="d8").piece.type, "r")
+    # TODO: Add tests for invalid castling
 
 if __name__ == '__main__':
     unittest.main()
