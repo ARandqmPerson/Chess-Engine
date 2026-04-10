@@ -28,7 +28,8 @@ class Game:
                 move = m
                 valid = True
         if valid == False:
-            return "Invalid move"
+            print("Invalid move")
+            return
         # Makes the move on the board
         self.moveList.append(move)
         self.board.makeMove(move, True)
@@ -44,7 +45,8 @@ class Game:
         for move in self.board.allValidMoves:
             if move.notation == notation:
                 return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates)
-        return "Invalid Move"
+        print("Invalid move")
+        return
 
     
 class Board:
@@ -206,9 +208,7 @@ class Board:
             self.whichPawnMoved2.append(move.piece)
         else:
             self.whichPawnMoved2.append(None)
-        # If this is a king move, the king can no longer castle
-        if move.piece.type in ("k","r"):
-            move.piece.hasMoved = True
+        move.piece.hasMoved = True
         if updateCheck:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
@@ -237,6 +237,9 @@ class Board:
             move.pieceCaptured.setStatus(0)
             self.capturedPieces.remove(move.pieceCaptured)
         self.whichPawnMoved2.pop()
+        # If this piece was just moved for the first time, revert hasMoved to False
+        if move.isFirstMove:
+            move.piece.hasMoved = False
         return
 
 class Square:
@@ -291,6 +294,7 @@ class Move:
             self.pieceCaptured = self.board.getSquare(toSquare.x,fromSquare.y).piece
         if moveType == 0:
             self.pieceCaptured = None
+        self.isFirstMove = True if self.piece.hasMoved == False else False
     
     def getChecksKing(self):
         return self.checksKing
@@ -320,11 +324,12 @@ class Move:
         string = ""
         if self.type in (0,1,4):
             pieceType = self.piece.type
-            if pieceType == "p":
-                if self.type == 1:
-                    string += self.fromSquare.getFile()
-            else:
+            if pieceType != "p":
                 string += pieceType.upper()
+            if self.type in (1,4):
+                if pieceType == "p":
+                    string += self.piece.square.getFile()
+                string += "x"
         # Checks for pieces (except pawns) of the same color and type that can also move to the target
         # square, and updates notation accordingly if they can (also returns notation)
         if self.piece.type != "p":
@@ -336,10 +341,6 @@ class Move:
                                     string += self.piece.square.getRank()
                                 else:
                                     string += self.piece.square.getFile()
-        if self.type in (1,4):
-            if self.piece.type == "p":
-                string += self.fromSquare.getFile()
-            string += "x"
         string += self.toSquare.notation
         self.notation = string
         return self.notation
@@ -368,7 +369,7 @@ class Move:
     
 
 class Piece:
-    def __init__(self, color=None, square=None, board=None, status=None):
+    def __init__(self, color=None, square=None, board=None, status=None, hasMoved=False):
         self.color = color
         self.square = square
         self.x = self.square.x
@@ -377,6 +378,7 @@ class Piece:
         self.validMoves = []
         self.threatenedMoves = []
         self.type = ""
+        self.hasMoved = hasMoved
         # 0 when on the board, 1 when captured
         self.status = 0
         return
@@ -398,12 +400,11 @@ class Piece:
         return
     
 class Pawn(Piece):
-    def __init__(self, firstMoveStatus=0, color=None, square=None, board=None):
-        super().__init__(color, square, board)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "p"
         # 0 if pawn hasn't been moved, 1 if it just moved and en passant is possible,
         # and 2 if it has moved and en passant is not possible
-        self.firstMoveStatus = firstMoveStatus
     
     # Updates valid moves and threatened squares for this piece
     # Prevents recursion (updateLeavesKingInCheck() calls this function) by using repeat parameter
@@ -419,7 +420,7 @@ class Pawn(Piece):
             inc = -1
         if board.getSquare(self.x, self.y+inc).piece == None:
             self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
-            if board.getSquare(self.x, self.y+2*inc).piece == None and self.firstMoveStatus == 0:
+            if board.getSquare(self.x, self.y+2*inc).piece == None and not self.hasMoved:
                 self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+2*inc), 0))
         if self.x!=0:
             current = board.getSquare(self.x-1,self.y+inc)
@@ -463,9 +464,8 @@ class Pawn(Piece):
         return result
 
 class Rook(Piece):
-    def __init__(self, color=None, square=None, board=None):
-        super().__init__(color, square, board)
-        self.hasMoved = False
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "r"
         return
     
@@ -497,8 +497,8 @@ class Rook(Piece):
         return
 
 class Knight(Piece):
-    def __init__(self, color=None, square=None, board=None):
-        super().__init__(color, square, board)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "n"
         return
     
@@ -522,8 +522,8 @@ class Knight(Piece):
         return
 
 class Bishop(Piece):
-    def __init__(self, color=None, square=None, board=None):
-        super().__init__(color, square, board)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "b"
         return 
     
@@ -554,8 +554,8 @@ class Bishop(Piece):
         return
 
 class Queen(Piece):
-    def __init__(self, color=None, square=None, board=None):
-        super().__init__(color, square, board)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "q"
         # Hidden bishop and rook objects used for generateValidMovesAndThreats
         self.bishop = Bishop(self.color,self.square,self.board)
@@ -584,9 +584,8 @@ class Queen(Piece):
         return
 
 class King(Piece):
-    def __init__(self, color=None, square=None, board=None):
-        super().__init__(color, square, board)
-        self.hasMoved = False
+    def __init__(self, color=None, square=None, board=None, hasMoved=False):
+        super().__init__(color, square, board, hasMoved)
         self.type = "k"
         return
     
@@ -616,7 +615,7 @@ class King(Piece):
                 if targetA.piece == None and targetB.piece == None:
                     oppositeColor = "white" if self.color == "black" else "black"
                     result = True
-                    for move in board.getValidMoves(oppositeColor):
+                    for move in board.getAllValidMoves(oppositeColor):
                         if move.toSquare == targetA or move.toSquare == targetB:
                             result = False
                         if result:
@@ -629,7 +628,7 @@ class King(Piece):
                 if targetA.piece == None and targetB.piece == None:
                     oppositeColor = "white" if self.color == "black" else "black"
                     result = True
-                    for move in board.getValidMoves(oppositeColor):
+                    for move in board.getAllValidMoves(oppositeColor):
                         if move.toSquare == targetA or move.toSquare == targetB:
                             result = False
                         if result:
