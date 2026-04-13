@@ -184,11 +184,11 @@ class Board:
             move.toSquare.setPiece(move.piece)
             move.piece.setSquare(move.toSquare)
             if move.toSquare.x == 6:
-                rook = self.board.getSquare(7,move.toSquare.y).piece
-                target = self.board.getSquare(5,move.toSquare.y)
+                rook = self.getSquare(7,move.toSquare.y).piece
+                target = self.getSquare(5,move.toSquare.y)
             else:
-                rook = self.board.getSquare(2,move.toSquare.y).piece
-                target = self.board.getSquare(3,move.toSquare.y)
+                rook = self.getSquare(2,move.toSquare.y).piece
+                target = self.getSquare(3,move.toSquare.y)
             rook.square.setPiece(None)
             rook.setSquare(target)
             target.setPiece(rook)
@@ -613,26 +613,22 @@ class King(Piece):
                 targetA = board.getSquare(5,self.y)
                 targetB = board.getSquare(6,self.y)
                 if targetA.piece == None and targetB.piece == None:
-                    oppositeColor = "white" if self.color == "black" else "black"
-                    result = True
-                    for move in board.getAllValidMoves(oppositeColor):
-                        if move.toSquare == targetA or move.toSquare == targetB:
-                            result = False
-                        if result:
-                            self.validMoves.append(Move(self,square,targetB,2))
+                    # If moving the king one square in the same direction would leave the 
+                    # king in check, castling is illegal
+                    moveA = Move(self, self.square, targetA, 0)
+                    moveA.updateLeavesKingInCheck()
+                    if not moveA.leavesKingInCheck:
+                        self.validMoves.append(Move(self,square,targetB,2))
             # Queenside castling
             target = board.getSquare(0,self.y)
             if target.piece != None and target.piece.type == "r" and target.piece.hasMoved == False:
                 targetA = board.getSquare(3,self.y)
                 targetB = board.getSquare(2,self.y)
                 if targetA.piece == None and targetB.piece == None:
-                    oppositeColor = "white" if self.color == "black" else "black"
-                    result = True
-                    for move in board.getAllValidMoves(oppositeColor):
-                        if move.toSquare == targetA or move.toSquare == targetB:
-                            result = False
-                        if result:
-                            self.validMoves.append(Move(self,square,targetB,2))
+                    moveA = Move(self, self.square, targetA, 0)
+                    moveA.updateLeavesKingInCheck()
+                    if not moveA.leavesKingInCheck:
+                        self.validMoves.append(Move(self,square,targetB,2))
     
         if not repeat:
             for move in self.validMoves:
