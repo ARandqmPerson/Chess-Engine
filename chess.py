@@ -158,6 +158,13 @@ class Board:
                 if piece.color == color:
                     piece.generateValidMovesAndThreats()
                     self.allValidMoves += piece.validMoves
+
+        # For debugging purposes; a list of strings corresponding
+        # to valid moves
+        self.allValidMovesNotation = []
+        for move in self.allValidMoves:
+            self.allValidMovesNotation.append(move.notation)
+
         return
     
     def getAllValidMoves(self, color=None):
@@ -221,6 +228,7 @@ class Board:
                 move.notation += "+"
         return
     
+    # Resets all of the variables updated by makeMove()
     def undoMove(self, move):
         if move.type in (0,1,4):
             move.fromSquare.setPiece(move.piece)
@@ -236,6 +244,22 @@ class Board:
             self.getSquare(move.toSquare.x,move.fromSquare.y).setPiece(move.pieceCaptured)
             move.pieceCaptured.setStatus(0)
             self.capturedPieces.remove(move.pieceCaptured)
+        if move.type == 2:
+            # The king goes back to the e-file
+            move.piece.square = self.getSquare(4, move.toSquare.y)
+            self.getSquare(4,move.toSquare.y).piece = move.piece
+            move.toSquare.piece = None
+            # Moves rook back depending on castling side
+            if move.toSquare.x == 2:
+                rook = self.getSquare(3,move.toSquare.y).piece
+                rook.square.piece = None
+                rook.square = self.getSquare(0,move.toSquare.y)
+                self.getSquare(0,move.toSquare.y).piece = rook
+            else:
+                rook = self.getSquare(5,move.toSquare.y).piece
+                rook.square.piece = None
+                rook.square = self.getSquare(7,move.toSquare.y)
+                self.getSquare(7,move.toSquare.y).piece = rook
         self.whichPawnMoved2.pop()
         # If this piece was just moved for the first time, revert hasMoved to False
         if move.isFirstMove:

@@ -1,3 +1,5 @@
+(README will be updated later)
+
 ## Explanation of threatened moves:
 
 When a move is made, the list of all valid moves is updated (so the next move can be checked for validity). Updating this list requires updating valid moves for each piece. Testing for move validity includes testing whether each move leaves the king in check.
