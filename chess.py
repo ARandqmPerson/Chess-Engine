@@ -190,11 +190,12 @@ class Board:
             move.fromSquare.setPiece(None)
             move.toSquare.setPiece(move.piece)
             move.piece.setSquare(move.toSquare)
+            # Finds and moves corresponding rook after moving king
             if move.toSquare.x == 6:
                 rook = self.getSquare(7,move.toSquare.y).piece
                 target = self.getSquare(5,move.toSquare.y)
             else:
-                rook = self.getSquare(2,move.toSquare.y).piece
+                rook = self.getSquare(0,move.toSquare.y).piece
                 target = self.getSquare(3,move.toSquare.y)
             rook.square.setPiece(None)
             rook.setSquare(target)
@@ -246,20 +247,20 @@ class Board:
             self.capturedPieces.remove(move.pieceCaptured)
         if move.type == 2:
             # The king goes back to the e-file
-            move.piece.square = self.getSquare(4, move.toSquare.y)
-            self.getSquare(4,move.toSquare.y).piece = move.piece
-            move.toSquare.piece = None
+            move.piece.setSquare(self.getSquare(4, move.toSquare.y))
+            self.getSquare(4,move.toSquare.y).setPiece(move.piece)
+            move.toSquare.setPiece(None)
             # Moves rook back depending on castling side
             if move.toSquare.x == 2:
                 rook = self.getSquare(3,move.toSquare.y).piece
-                rook.square.piece = None
-                rook.square = self.getSquare(0,move.toSquare.y)
-                self.getSquare(0,move.toSquare.y).piece = rook
+                rook.square.setPiece(None)
+                rook.setSquare(self.getSquare(0,move.toSquare.y))
+                self.getSquare(0,move.toSquare.y).setPiece(rook)
             else:
                 rook = self.getSquare(5,move.toSquare.y).piece
-                rook.square.piece = None
-                rook.square = self.getSquare(7,move.toSquare.y)
-                self.getSquare(7,move.toSquare.y).piece = rook
+                rook.square.setPiece(None)
+                rook.setSquare(self.getSquare(7,move.toSquare.y))
+                self.getSquare(7,move.toSquare.y).setPiece(rook)
         self.whichPawnMoved2.pop()
         # If this piece was just moved for the first time, revert hasMoved to False
         if move.isFirstMove:
@@ -342,9 +343,10 @@ class Move:
     def updateNotation(self):
         if self.type == 2:
             if self.toSquare.x == 2:
-                return "O-O-O"
+                self.notation = "O-O-O"
             else:
-                return "O-O"
+                self.notation = "O-O"
+            return self.notation
         string = ""
         if self.type in (0,1,4):
             pieceType = self.piece.type
@@ -640,8 +642,7 @@ class King(Piece):
                     # If moving the king one square in the same direction would leave the 
                     # king in check, castling is illegal
                     moveA = Move(self, self.square, targetA, 0)
-                    moveA.updateLeavesKingInCheck()
-                    if not moveA.leavesKingInCheck:
+                    if not moveA.getLeavesKingInCheck(update=True):
                         self.validMoves.append(Move(self,square,targetB,2))
             # Queenside castling
             target = board.getSquare(0,self.y)
