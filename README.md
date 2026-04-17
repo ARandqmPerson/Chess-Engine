@@ -1,5 +1,9 @@
 (README will be updated later)
 
+## Note for viewers of this program:
+
+All of the code in this project was written myself. I never asked an AI model for feedback on my code, nor how I should write and debug the code or structure the program.
+
 ## Explanation of threatened moves:
 
 When a move is made, the list of all valid moves is updated (so the next move can be checked for validity). Updating this list requires updating valid moves for each piece. Testing for move validity includes testing whether each move leaves the king in check.

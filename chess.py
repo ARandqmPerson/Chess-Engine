@@ -81,6 +81,8 @@ class Board:
         self.whiteKing = self.getSquare(4,0).piece
         self.blackKing = self.getSquare(4,7).piece
         self.generateAllValidMovesAndThreats(True)
+        # Only used for easier debugging
+        self.squaresNotation = {square.notation: square for square in self.squares.values()}
         return
     
     def setPieces(self, coordsSet, pieceType, color):
