@@ -74,16 +74,7 @@ class TestMoveNotation(unittest.TestCase):
         self.board = self.game.board
     # Will cause an error if the move notation isn't recognized
     def testAmbiguousMoveNotation(self):
-        self.game.makeMoveUsingNotation("d3")
-        self.game.makeMoveUsingNotation("d6")
-        self.game.makeMoveUsingNotation("Nf3")
-        self.game.makeMoveUsingNotation("Nf6")
-        self.game.makeMoveUsingNotation("Nbd2")
-        self.game.makeMoveUsingNotation("Nbd7")
-        self.game.makeMoveUsingNotation("Nd4")
-        self.game.makeMoveUsingNotation("Nd5")
-        self.game.makeMoveUsingNotation("N2b3")
-        self.game.makeMoveUsingNotation("N7b6")
+        self.game.makeMoves(("d3","d6","Nf3","Nf6","Nbd2","Nbd7","Nd4","Nd5","N2b3","N7b6"))
 
 class TestEnPassant(unittest.TestCase):
     def setUp(self):
@@ -92,11 +83,7 @@ class TestEnPassant(unittest.TestCase):
     # Tests whether en passant is correctly recognized as valid and played
     # and whether it's correctly recognized as invalid
     def testEnPassant(self):
-        self.game.makeMoveUsingNotation("e4")
-        self.game.makeMoveUsingNotation("e6")
-        self.game.makeMoveUsingNotation("e5")
-        self.game.makeMoveUsingNotation("d5")
-        self.game.makeMoveUsingNotation("exd6")
+        self.game.makeMoves(("e4","e6","e5","d5","exd6"))
         self.assertEqual(self.board.getSquare(3,5).piece.type,"p")
         self.assertEqual(self.board.getSquare(3,4).piece,None)
 
@@ -104,16 +91,7 @@ class TestCastling(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        self.game.makeMoveUsingNotation("e4")
-        self.game.makeMoveUsingNotation("d5")
-        self.game.makeMoveUsingNotation("exd5")
-        self.game.makeMoveUsingNotation("Qxd5")
-        self.game.makeMoveUsingNotation("d4")
-        self.game.makeMoveUsingNotation("Nc6")
-        self.game.makeMoveUsingNotation("Nf3")
-        self.game.makeMoveUsingNotation("Bg4")
-        self.game.makeMoveUsingNotation("Be2")
-        self.game.makeMoveUsingNotation("e6")
+        self.game.makeMoves("e4","d5","exd5","Qxd5","d4","Nc6","Nf3","Bg4","Be2","e6")
     def testCastlingKingside(self):
         self.game.makeMoveUsingNotation("O-O")
         self.assertEqual(self.board.getSquare(notation="g1").piece.type, "k")
@@ -125,26 +103,26 @@ class TestCastling(unittest.TestCase):
         self.assertEqual(self.board.getSquare(notation="d8").piece.type, "r")
     def testInvalidCastling(self):
         # Castling should not be valid after the rooks move
-        self.game.makeMoveUsingNotation("Rg1")
-        self.game.makeMoveUsingNotation("Rb8")
-        self.game.makeMoveUsingNotation("Rh1")
-        self.game.makeMoveUsingNotation("Ra8")
-        self.game.makeMoveUsingNotation("O-O")
-        self.game.makeMoveUsingNotation("O-O-O")
+        self.game.makeMoves("Rg1","Rb8","Rh1","Ra8","O-O","O-O-O")
         self.assertEqual(self.board.getSquare(notation="e8").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="e1").piece.type, "k")
     def testCastlingThroughCheck(self):
         # The bishop covers f1 and the knight covers d8, 
         # so castling should be invalid
-        self.game.makeMoveUsingNotation("g3")
-        self.game.makeMoveUsingNotation("Bh3")
-        self.game.makeMoveUsingNotation("Ne5")
-        self.game.makeMoveUsingNotation("g6")
-        self.game.makeMoveUsingNotation("Nxc6")
-        self.game.makeMoveUsingNotation("O-O-O")
-        self.game.makeMoveUsingNotation("O-O")
+        self.game.makeMoves("g3","Bh3","Ne5","g6","Nxc6","O-O-O","O-O")
         self.assertEqual(self.board.getSquare(notation="e8").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="e1").piece.type, "k")
+
+class TestPromotion(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.board
+    def testStandardPromotionWhite(self):
+        self.game.makeMoves(("e4","d5","exd5","c6","dxc6","h6","cxb7","Nc6"))
+        self.game.makeMoveUsingNotation("b8=R")
+        self.assertEqual(self.board.getSquare(notation="b8").piece.type == "r")
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

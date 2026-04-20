@@ -1,16 +1,14 @@
-# What is this?
+# Summary
 
 This program, specifically chess.py, allows two players to play a game of chess. It keeps track of all moves played and prevents players from making illegal moves.
 
 It is *not* an engine like Stockfish that calculates the best moves. It only calculates which moves are legal and monitors the game state.
 
-### Why did you write it?
+### Why I wrote it
 
 I began this project because I wanted to gain experience with Python and software engineering. As I've gone along, I've learned a lot about the basics of python classes, objects, data structures, etc., and I've worked on best practices like documentation and consistent commits with good commit messages.
 
-My other reason for creating this program is that I'm a dedicated chess player, so I could potentially create a chess-related app/website in the future.
-
-When I first started, I did not realize how logistically complex the rules of chess are. There are so many edge cases and calculations that need to be made just to determine a legal move. However, I'm actually quite glad it provided such a challenge, especially since the logic and problem-solving are my favorite parts of programming.
+When I first started, I did not realize how logistically complex the rules of chess are. There are so many edge cases and calculations that need to be made just to determine a legal move. However, I'm actually quite glad it has provided such a challenge.
 
 ### A note on AI:
 

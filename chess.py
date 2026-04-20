@@ -47,6 +47,11 @@ class Game:
                 return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates)
         print("Invalid move")
         return
+    
+    def makeMoves(self, moves):
+        for move in moves:
+            self.makeMoveUsingNotation(move)
+        return
 
     
 class Board:
@@ -202,11 +207,26 @@ class Board:
             rook.square.setPiece(None)
             rook.setSquare(target)
             target.setPiece(rook)
-        if type in (1,4):
+        if type in (1,4,6):
             move.pieceCaptured.setSquare(None)
-            move.pieceCaptured.setStatus(1)
+            move.pieceCaptured.status = 1
             self.capturedPieces.append(move.pieceCaptured)
             move.toSquare.setPiece(move.piece)
+        if type in (3,6):
+            self.fromSquare.setPiece(None)
+            if move.promoteTo == "q":
+                self.toSquare.setPiece(Queen(move.piece.color,move.toSquare,self,True,True))
+            if move.promoteTo == "r":
+                self.toSquare.setPiece(Rook(move.piece.color,move.toSquare,self,True,True))
+            if move.promoteTo == "n":
+                self.toSquare.setPiece(Knight(move.piece.color,move.toSquare,self,True,True))
+            if move.promoteTo == "b":
+                self.toSquare.setPiece(Bishop(move.piece.color,move.toSquare,self,True,True))
+            move.pawnPromoted = move.piece
+            # A promoted pawn counts as a captured piece for the opponent
+            self.capturedPieces.append(move.pawnPromoted)
+            move.pawnPromoted.status = 1
+            move.piece = self.toSquare.piece
         if type == 4:
             self.getSquare(move.toSquare.x, move.fromSquare.y).setPiece(None)
         if type in (0,1,4):
@@ -237,7 +257,13 @@ class Board:
             move.fromSquare.setPiece(move.piece)
             move.piece.setSquare(move.fromSquare)
             move.toSquare.setPiece(None)
-        if move.type == 1:
+        if move.type in (3,6):
+            move.fromSquare.setPiece(move.pawnPromoted)
+            move.toSquare.setPiece(None)
+            self.capturedPieces.remove(move.pawnPromoted)
+            move.pawnPromoted.setStatus(0)
+            move.pawnPromoted.setSquare(move.fromSquare)
+        if move.type in (1,6):
             move.pieceCaptured.setSquare(move.toSquare)
             move.pieceCaptured.setStatus(0)
             self.capturedPieces.remove(move.pieceCaptured)
@@ -302,9 +328,9 @@ class Square:
         return self.notation[0]
     def getRank(self):
         return str(self.y + 1)
-# Move types: 0=normal move, 1=capture, 2=castling, 3=promotion, 4=en passant, 5=threat
+# Move types: 0=normal move, 1=capture, 2=castling, 3=promotion, 4=en passant, 5=threat, 6=promotion AND capture
 class Move:
-    def __init__(self, pieceMoved=None, fromSquare=None, toSquare=None, moveType=None):
+    def __init__(self, pieceMoved=None, fromSquare=None, toSquare=None, moveType=None, promoteTo=None):
         self.piece = pieceMoved
         self.fromSquare = fromSquare
         self.toSquare = toSquare
@@ -315,12 +341,18 @@ class Move:
         self.color = self.piece.color
         self.board = self.piece.board
         self.game = self.board.game
+        self.promoteTo = promoteTo
+        # The pawn which leaves the board when it promotes
+        self.pawnPromoted = None
         if moveType == 1:
             self.pieceCaptured = toSquare.piece
         if moveType == 4:
             self.pieceCaptured = self.board.getSquare(toSquare.x,fromSquare.y).piece
         if moveType == 0:
             self.pieceCaptured = None
+        if moveType == 3:
+            if self.toSquare.piece != None:
+                self.pieceCaptured = toSquare.piece
         self.isFirstMove = True if self.piece.hasMoved == False else False
     
     def getChecksKing(self):
@@ -350,11 +382,11 @@ class Move:
                 self.notation = "O-O"
             return self.notation
         string = ""
-        if self.type in (0,1,4):
+        if self.type in (0,1,3,4,6):
             pieceType = self.piece.type
             if pieceType != "p":
                 string += pieceType.upper()
-            if self.type in (1,4):
+            if self.type in (1,4,6):
                 if pieceType == "p":
                     string += self.piece.square.getFile()
                 string += "x"
@@ -370,6 +402,8 @@ class Move:
                                 else:
                                     string += self.piece.square.getFile()
         string += self.toSquare.notation
+        if self.type in (3,6):
+            string += "=" + self.promoteTo.upper()
         self.notation = string
         return self.notation
         
@@ -397,7 +431,7 @@ class Move:
     
 
 class Piece:
-    def __init__(self, color=None, square=None, board=None, status=None, hasMoved=False):
+    def __init__(self, color=None, square=None, board=None, status=None, hasMoved=False, promoted=False):
         self.color = color
         self.square = square
         self.x = self.square.x
@@ -407,8 +441,9 @@ class Piece:
         self.threatenedMoves = []
         self.type = ""
         self.hasMoved = hasMoved
+        self.promoted = promoted
         # 0 when on the board, 1 when captured
-        self.status = 0
+        self.status = 0 if status == None else status
         return
     # Returns only the coordinates that can be moved to
     def getValidMoveCoordinates(self):
@@ -447,19 +482,31 @@ class Pawn(Piece):
         else:
             inc = -1
         if board.getSquare(self.x, self.y+inc).piece == None:
-            self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
-            if board.getSquare(self.x, self.y+2*inc).piece == None and not self.hasMoved:
-                self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+2*inc), 0))
+            if self.y+inc in (0,7):
+                # Temporary Move object; instead of adding 4 valid moves for each promotion type
+                # and then checking validity, only one is added, and if it's valid, then the 4
+                # different promotion moves are added
+                self.validMoves.append(Move(self,square,board.getSquare(self.x,self.y+inc),3))
+            else:
+                self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
+                if board.getSquare(self.x, self.y+2*inc).piece == None and not self.hasMoved:
+                    self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+2*inc), 0))
         if self.x!=0:
             current = board.getSquare(self.x-1,self.y+inc)
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
-                self.validMoves.append(Move(self,square,current,1))
+                if self.y+inc in (0,7):
+                    self.validMoves.append(Move(self,square,current,6))
+                else:
+                    self.validMoves.append(Move(self,square,current,1))
         if self.x!=7:
             current = board.getSquare(self.x+1,self.y+inc)
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
-                self.validMoves.append(Move(self,square,current,1))
+                if self.y+inc in (0,7):
+                    self.validMoves.append(Move(self,square,current,6))
+                else:
+                    self.validMoves.append(Move(self,square,current,1))
         # If an enemy pawn just moved 2 squares and this pawn is next to it,
         # add en passant as a valid move
         temp = self.board.whichPawnMoved2[-1]
@@ -472,6 +519,13 @@ class Pawn(Piece):
             for move in self.validMoves:
                 if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
+        for move in self.validMoves:
+            if move.type in (3,6):
+                self.validMoves.append(Move(self,square,move.toSquare,move.type,"q"))
+                self.validMoves.append(Move(self,square,move.toSquare,move.type,"r"))
+                self.validMoves.append(Move(self,square,move.toSquare,move.type,"n"))
+                self.validMoves.append(Move(self,square,move.toSquare,move.type,"b"))
+                self.validMoves.remove(move)
         return
     
     # Returns a list of enemy pawns that are next to this pawn; this method should be used
@@ -492,8 +546,8 @@ class Pawn(Piece):
         return result
 
 class Rook(Piece):
-    def __init__(self, color=None, square=None, board=None, hasMoved=False):
-        super().__init__(color, square, board, hasMoved)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False, promoted=False):
+        super().__init__(color, square, board, hasMoved, promoted)
         self.type = "r"
         return
     
@@ -525,8 +579,8 @@ class Rook(Piece):
         return
 
 class Knight(Piece):
-    def __init__(self, color=None, square=None, board=None, hasMoved=False):
-        super().__init__(color, square, board, hasMoved)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False, promoted=False):
+        super().__init__(color, square, board, hasMoved, promoted)
         self.type = "n"
         return
     
@@ -550,8 +604,8 @@ class Knight(Piece):
         return
 
 class Bishop(Piece):
-    def __init__(self, color=None, square=None, board=None, hasMoved=False):
-        super().__init__(color, square, board, hasMoved)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False, promoted=False):
+        super().__init__(color, square, board, hasMoved, promoted)
         self.type = "b"
         return 
     
@@ -582,8 +636,8 @@ class Bishop(Piece):
         return
 
 class Queen(Piece):
-    def __init__(self, color=None, square=None, board=None, hasMoved=False):
-        super().__init__(color, square, board, hasMoved)
+    def __init__(self, color=None, square=None, board=None, hasMoved=False, promoted=False):
+        super().__init__(color, square, board, hasMoved, promoted)
         self.type = "q"
         # Hidden bishop and rook objects used for generateValidMovesAndThreats
         self.bishop = Bishop(self.color,self.square,self.board)
