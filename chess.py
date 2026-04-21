@@ -11,11 +11,11 @@ class Game:
         for move in self.moveList:
             print(move.notation)
 
-    # Input the coordinates of the square you want to move from
-    # and the square you want to move to
+    # Input the coordinates of the square you want to move from and the square you want to move to
+    # (must account for promotion type because the 4 different promotion moves have the same toSquare and fromSquare)
     # For example, starting with makeMove([4,1],[4,3]) is pawn to e4
     # Returns string indicating move validity, move type, and notation
-    def makeMove(self, squareFromCoords=None, squareToCoords=None):
+    def makeMove(self, squareFromCoords, squareToCoords, promotionType=None):
         fromX = squareFromCoords[0]
         fromY = squareFromCoords[1]
         toX = squareToCoords[0]
@@ -24,7 +24,7 @@ class Game:
         squareTo = self.board.getSquare(toX, toY)
         valid = False
         for m in self.board.allValidMoves:
-            if m.fromSquare==squareFrom and m.toSquare==squareTo:
+            if m.fromSquare==squareFrom and m.toSquare==squareTo and m.promoteTo==promotionType:
                 move = m
                 valid = True
         if valid == False:
@@ -33,18 +33,18 @@ class Game:
         # Makes the move on the board
         self.moveList.append(move)
         self.board.makeMove(move, True)
+        print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
         if self.whoseMove == "black":
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
         self.board.generateAllValidMovesAndThreats(True)
-        print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
         return
     
     # Does the same thing as makeMove() but accepts standard notation
     def makeMoveUsingNotation(self, notation):
         for move in self.board.allValidMoves:
             if move.notation == notation:
-                return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates)
+                return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates,move.promoteTo)
         print("Invalid move")
         return
     
@@ -213,20 +213,19 @@ class Board:
             self.capturedPieces.append(move.pieceCaptured)
             move.toSquare.setPiece(move.piece)
         if type in (3,6):
-            self.fromSquare.setPiece(None)
+            move.fromSquare.setPiece(None)
             if move.promoteTo == "q":
-                self.toSquare.setPiece(Queen(move.piece.color,move.toSquare,self,True,True))
+                move.toSquare.setPiece(Queen(move.piece.color,move.toSquare,self,True,True))
             if move.promoteTo == "r":
-                self.toSquare.setPiece(Rook(move.piece.color,move.toSquare,self,True,True))
+                move.toSquare.setPiece(Rook(move.piece.color,move.toSquare,self,True,True))
             if move.promoteTo == "n":
-                self.toSquare.setPiece(Knight(move.piece.color,move.toSquare,self,True,True))
+                move.toSquare.setPiece(Knight(move.piece.color,move.toSquare,self,True,True))
             if move.promoteTo == "b":
-                self.toSquare.setPiece(Bishop(move.piece.color,move.toSquare,self,True,True))
+                move.toSquare.setPiece(Bishop(move.piece.color,move.toSquare,self,True,True))
             move.pawnPromoted = move.piece
             # A promoted pawn counts as a captured piece for the opponent
             self.capturedPieces.append(move.pawnPromoted)
             move.pawnPromoted.status = 1
-            move.piece = self.toSquare.piece
         if type == 4:
             self.getSquare(move.toSquare.x, move.fromSquare.y).setPiece(None)
         if type in (0,1,4):
@@ -344,7 +343,7 @@ class Move:
         self.promoteTo = promoteTo
         # The pawn which leaves the board when it promotes
         self.pawnPromoted = None
-        if moveType == 1:
+        if moveType in (1,6):
             self.pieceCaptured = toSquare.piece
         if moveType == 4:
             self.pieceCaptured = self.board.getSquare(toSquare.x,fromSquare.y).piece
@@ -402,7 +401,7 @@ class Move:
                                 else:
                                     string += self.piece.square.getFile()
         string += self.toSquare.notation
-        if self.type in (3,6):
+        if self.type in (3,6) and self.promoteTo != None:
             string += "=" + self.promoteTo.upper()
         self.notation = string
         return self.notation
@@ -483,10 +482,9 @@ class Pawn(Piece):
             inc = -1
         if board.getSquare(self.x, self.y+inc).piece == None:
             if self.y+inc in (0,7):
-                # Temporary Move object; instead of adding 4 valid moves for each promotion type
-                # and then checking validity, only one is added, and if it's valid, then the 4
-                # different promotion moves are added
-                self.validMoves.append(Move(self,square,board.getSquare(self.x,self.y+inc),3))
+                # Adds 4 different moves for each possible promoted piece
+                for type in ("q","r","n","b"):
+                    self.validMoves.append(Move(self,square,board.getSquare(self.x,self.y+inc),3,type))
             else:
                 self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
                 if board.getSquare(self.x, self.y+2*inc).piece == None and not self.hasMoved:
@@ -496,15 +494,17 @@ class Pawn(Piece):
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
                 if self.y+inc in (0,7):
-                    self.validMoves.append(Move(self,square,current,6))
+                    for type in ("q","r","n","b"):
+                        self.validMoves.append(Move(self,square,current,6,type))
                 else:
                     self.validMoves.append(Move(self,square,current,1))
         if self.x!=7:
             current = board.getSquare(self.x+1,self.y+inc)
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
-                if self.y+inc in (0,7):
-                    self.validMoves.append(Move(self,square,current,6))
+                if current.y in (0,7):
+                    for type in ("q","r","n","b"):
+                        self.validMoves.append(Move(self,square,current,6,type))
                 else:
                     self.validMoves.append(Move(self,square,current,1))
         # If an enemy pawn just moved 2 squares and this pawn is next to it,
@@ -519,13 +519,6 @@ class Pawn(Piece):
             for move in self.validMoves:
                 if move.getLeavesKingInCheck():
                     self.validMoves.remove(move)
-        for move in self.validMoves:
-            if move.type in (3,6):
-                self.validMoves.append(Move(self,square,move.toSquare,move.type,"q"))
-                self.validMoves.append(Move(self,square,move.toSquare,move.type,"r"))
-                self.validMoves.append(Move(self,square,move.toSquare,move.type,"n"))
-                self.validMoves.append(Move(self,square,move.toSquare,move.type,"b"))
-                self.validMoves.remove(move)
         return
     
     # Returns a list of enemy pawns that are next to this pawn; this method should be used

@@ -120,7 +120,7 @@ class TestPromotion(unittest.TestCase):
     def testStandardPromotionWhite(self):
         self.game.makeMoves(("e4","d5","exd5","c6","dxc6","h6","cxb7","Nc6"))
         self.game.makeMoveUsingNotation("b8=R")
-        self.assertEqual(self.board.getSquare(notation="b8").piece.type == "r")
+        self.assertTrue(self.board.getSquare(notation="b8").piece.type == "r")
         pass
 
 
