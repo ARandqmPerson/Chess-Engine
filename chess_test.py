@@ -91,7 +91,7 @@ class TestCastling(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        self.game.makeMoves("e4","d5","exd5","Qxd5","d4","Nc6","Nf3","Bg4","Be2","e6")
+        self.game.makeMoves(("e4","d5","exd5","Qxd5","d4","Nc6","Nf3","Bg4","Be2","e6"))
     def testCastlingKingside(self):
         self.game.makeMoveUsingNotation("O-O")
         self.assertEqual(self.board.getSquare(notation="g1").piece.type, "k")
@@ -103,13 +103,13 @@ class TestCastling(unittest.TestCase):
         self.assertEqual(self.board.getSquare(notation="d8").piece.type, "r")
     def testInvalidCastling(self):
         # Castling should not be valid after the rooks move
-        self.game.makeMoves("Rg1","Rb8","Rh1","Ra8","O-O","O-O-O")
+        self.game.makeMoves(("Rg1","Rb8","Rh1","Ra8","O-O","O-O-O"))
         self.assertEqual(self.board.getSquare(notation="e8").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="e1").piece.type, "k")
     def testCastlingThroughCheck(self):
         # The bishop covers f1 and the knight covers d8, 
         # so castling should be invalid
-        self.game.makeMoves("g3","Bh3","Ne5","g6","Nxc6","O-O-O","O-O")
+        self.game.makeMoves(("g3","Bh3","Ne5","g6","Nxc6","O-O-O","O-O"))
         self.assertEqual(self.board.getSquare(notation="e8").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="e1").piece.type, "k")
 
@@ -118,9 +118,27 @@ class TestPromotion(unittest.TestCase):
         self.game = Game()
         self.board = self.game.board
     def testStandardPromotionWhite(self):
-        self.game.makeMoves(("e4","d5","exd5","c6","dxc6","h6","cxb7","Nc6"))
-        self.game.makeMoveUsingNotation("b8=R")
-        self.assertTrue(self.board.getSquare(notation="b8").piece.type == "r")
+        self.game.makeMoves(("e4","d5","exd5","c6","dxc6","h6","cxb7","Nc6","b8=Q"))
+        self.assertTrue(self.board.getSquare(notation="b8").piece.type == "q")
+        self.game.makeMoves(("Bb7","Qxb7"))
+        self.assertTrue(self.board.getSquare(notation="b7").piece.type == "q")
+        pass
+    def testStandardPromotionBlack(self):
+        self.game.makeMoves(("e4","d5","f3","dxe4","Na3","exf3","Nb1","fxg2","Nh3","g1=Q"))
+        self.assertTrue(self.board.getSquare(notation="g1").piece.type == "q")
+        self.game.makeMoves(("Ng5","Qxh1"))
+        self.assertTrue(self.board.getSquare(notation="h1").piece.type == "q")
+        pass
+    def testCapturePromotionWhite(self):
+        self.game.makeMoves(("e4","d5","exd5","c6","dxc6","h6","cxb7","Nc6","bxc8=Q"))
+        self.assertTrue(self.board.getSquare(notation="c8").piece.type == "q")
+        self.game.makeMoves(("Rb8","Qxb8"))
+        self.assertTrue(self.board.getSquare(notation="b8").piece.type == "q")
+    def testCapturePromotionBlack(self):
+        self.game.makeMoves(("e4","d5","f3","dxe4","Na3","exf3","Nb1","fxg2","Nh3","gxh1=Q"))
+        self.assertTrue(self.board.getSquare(notation="h1").piece.type == "q")
+        self.game.makeMoves(("Ng1","Qxg1"))
+        self.assertTrue(self.board.getSquare(notation="g1").piece.type == "q")
         pass
 
 
