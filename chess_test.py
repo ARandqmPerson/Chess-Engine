@@ -36,7 +36,7 @@ class TestChessBasic(unittest.TestCase):
     def testMove(self):
         game = self.game
         board = self.board
-        game.makeMove([4,1],[4,3])
+        game.makeMoveCoordinates([4,1],[4,3])
         self.assertNotEqual(board.getSquare(4,3).piece,None)
         self.assertEqual(board.getSquare(4,1).piece,None)
         self.assertEqual(game.moveNumber,1)
@@ -46,11 +46,11 @@ class TestMultipleMoves(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        self.game.makeMove([4,1],[4,3])
-        self.game.makeMove([4,6],[4,4])
-        self.game.makeMove([3,0],[7,4])
-        self.game.makeMove([6,7],[5,5])
-        self.game.makeMove([7,4],[5,6])
+        self.game.makeMoveCoordinates([4,1],[4,3])
+        self.game.makeMoveCoordinates([4,6],[4,4])
+        self.game.makeMoveCoordinates([3,0],[7,4])
+        self.game.makeMoveCoordinates([6,7],[5,5])
+        self.game.makeMoveCoordinates([7,4],[5,6])
         return
     def testGameInfo(self):
         self.assertEqual(self.game.whoseMove,"black")
@@ -93,12 +93,12 @@ class TestCastling(unittest.TestCase):
         self.board = self.game.board
         self.game.makeMoves(("e4","d5","exd5","Qxd5","d4","Nc6","Nf3","Bg4","Be2","e6"))
     def testCastlingKingside(self):
-        self.game.makeMoveUsingNotation("O-O")
+        self.game.makeMove("O-O")
         self.assertEqual(self.board.getSquare(notation="g1").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="f1").piece.type, "r")
     def testCastlingQueenside(self):
-        self.game.makeMoveUsingNotation("Be3")
-        self.game.makeMoveUsingNotation("O-O-O")
+        self.game.makeMove("Be3")
+        self.game.makeMove("O-O-O")
         self.assertEqual(self.board.getSquare(notation="c8").piece.type, "k")
         self.assertEqual(self.board.getSquare(notation="d8").piece.type, "r")
     def testInvalidCastling(self):
