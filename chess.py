@@ -9,7 +9,7 @@ class Game:
         self.board = Board(self) if board == None else board
         return
     
-    # TODO: Finish getMoveNotation()
+
     def displayMoveList(self):
         for move in self.moveList:
             print(move.notation)
@@ -101,6 +101,41 @@ class Board:
             self.getSquare(i,j).setPiece(piece)
         return
     
+    # Sets up pieces according to a provided FEN
+    def readFEN(self, FEN):
+        # Slashes cause issues
+        string = ""
+        for ch in FEN:
+            if ch != "/":
+                string += (ch)
+        location = 0
+        char = string[0]
+        j = 0
+        # FEN goes from 8th rank/file to 1st, so for loop counts backwards
+        for i in range(63,-1,-1):
+            currentSquare = self.getSquare(7-(i%8),int(i/8))
+            if j > 1:
+                j -= 1
+                continue
+            elif j == 1:
+                j = 0
+                location += 1
+                char = string[location]
+                continue
+            elif char in ("R","N","B","Q","K","P"):
+                color = "white"
+            elif char in ("r","n","b","q","k","p"):
+                color = "black"
+            else:
+                j = int(char) - 1
+                continue
+            str = char.lower()
+            temp = {"r":Rook,"n":Knight,"b":Bishop,"q":Queen,"k":King,"p":Pawn}
+            self.setPieces({currentSquare.coordinates},temp[str],color)
+            location += 1
+            char = string[location]
+        return
+
     # Accepts x, y coordinates or standard notation
     def getSquare(self, targetX=None, targetY=None, notation=None):
         if notation != None:
@@ -247,6 +282,7 @@ class Board:
             move.fromSquare.setPiece(None)
             move.piece.setSquare(move.toSquare)
             move.toSquare.setPiece(move.piece)
+        # TODO: use better system for en passant
         # If this move is a pawn moving two squares forward, add it to the list
         if type == 0 and move.piece.type == "p" and abs(move.toSquare.y-move.fromSquare.y) == 2:
             self.whichPawnMoved2.append(move.piece)

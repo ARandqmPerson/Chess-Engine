@@ -152,5 +152,16 @@ class TestGameEnd(unittest.TestCase):
         self.game.makeMoves(("f4","e5","g4","Qh4"))
         self.assertEqual(self.game.gameOver,1)
 
+class TestFEN(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.board
+    def testPieceSetup(self):
+        # This is the FEN after 1. e4
+        string = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+        self.board.readFEN(string)
+        self.assertTrue(self.board.getSquare(notation="e4").pieceColor=="white")
+        self.assertTrue(self.board.getSquare(notation="e8").pieceColor=="black")
+
 if __name__ == '__main__':
     unittest.main()
