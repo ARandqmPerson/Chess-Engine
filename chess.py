@@ -197,11 +197,11 @@ class Board:
 
     # TODO: Add other move types
     # NOTE: For efficiency, makeMove() only runs 
-    # generateAllValidMovesAndThreats and updateWhichKingInCheck() if updateCheck is True
+    # generateAllValidMovesAndThreats and updateWhichKingInCheck() if update is True
     # NOTE: To update notation, disambiguation must be checked BEFORE the move is made,
     # but whether the move is a check can only be determined AFTER it's been made, so it's
     # automatically done when the function updates for check
-    def makeMove(self, move, updateCheck=False):
+    def makeMove(self, move, update=False):
         move.updateNotation()
         type = move.type
         if type == 2:
@@ -249,7 +249,7 @@ class Board:
         else:
             self.whichPawnMoved2.append(None)
         move.piece.hasMoved = True
-        if updateCheck:
+        if update:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
             # Generate valid moves for current color to determine if the king is in check
@@ -352,6 +352,7 @@ class Move:
         self.board = self.piece.board
         self.game = self.board.game
         self.promoteTo = promoteTo
+
         # The pawn which leaves the board when it promotes
         self.pawnPromoted = None
         if moveType in (1,6):
@@ -526,12 +527,13 @@ class Pawn(Piece):
                 if self in temp.getAdjacentEnemyPawns():
                     targetSquare = board.getSquare(temp.x, temp.y+1) if self.color == "white" else board.getSquare(temp.x, temp.y-1)
                     self.validMoves.append(Move(self,square,targetSquare,4))
-        temp2 = []
+
         if not repeat:
+            temp2 = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp2.append(move)
-        self.validMoves = temp2
+            self.validMoves = temp2
         return
     
     # Returns a list of enemy pawns that are next to this pawn; this method should be used
@@ -579,12 +581,12 @@ class Rook(Piece):
                         blocked = True
                 inc += 1
 
-        temp = []
         if not repeat:
+            temp = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp.append(move)
-        self.validMoves = temp
+            self.validMoves = temp
         return
 
 class Knight(Piece):
@@ -607,12 +609,12 @@ class Knight(Piece):
             elif i.pieceColor != self.color:
                 self.validMoves.append(Move(self, square, i, 1))
 
-        temp = []
         if not repeat:
+            temp = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp.append(move)
-        self.validMoves = temp
+            self.validMoves = temp
         return
 
 class Bishop(Piece):
@@ -642,12 +644,12 @@ class Bishop(Piece):
                         blocked = True
                 inc += 1
 
-        temp = []
         if not repeat:
+            temp = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp.append(move)
-        self.validMoves = temp
+            self.validMoves = temp
         return
 
 class Queen(Piece):
@@ -675,12 +677,12 @@ class Queen(Piece):
             move.setPiece(self)
             self.threatenedMoves.append(move)
 
-        temp = []
         if not repeat:
+            temp = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp.append(move)
-        self.validMoves = temp
+            self.validMoves = temp
         return
 
 class King(Piece):
@@ -728,10 +730,11 @@ class King(Piece):
                     moveA.updateLeavesKingInCheck()
                     if not moveA.leavesKingInCheck:
                         self.validMoves.append(Move(self,square,targetB,2))  
-        temp=[]
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
                 if not move.getLeavesKingInCheck():
                     temp.append(move)
-        self.validMoves = temp
+            self.validMoves = temp
         return
