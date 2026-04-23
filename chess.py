@@ -2,6 +2,9 @@ class Game:
     def __init__(self, moveNumber=1, whoseMove="white", board=None, moves=None):
         self.moveNumber = moveNumber
         self.whoseMove = whoseMove
+        # Same value as the endsGame attribute of the most recently played move;
+        # 0 means none, 1 means checkmate, 2-5 means draw
+        self.gameOver = 0
         self.moveList = [] if moves == None else moves
         self.board = Board(self) if board == None else board
         return
@@ -34,6 +37,7 @@ class Game:
         if self.whoseMove == "black":
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
+        self.gameOver = move.endsGame
         self.board.generateAllValidMovesAndThreats(True)
         return True
     
@@ -195,12 +199,12 @@ class Board:
             return self.allThreatenedMoves
         return [move for move in self.allThreatenedMoves if move.piece.color==color]
 
-    # TODO: Add other move types
     # NOTE: For efficiency, makeMove() only runs 
     # generateAllValidMovesAndThreats and updateWhichKingInCheck() if update is True
     # NOTE: To update notation, disambiguation must be checked BEFORE the move is made,
     # but whether the move is a check can only be determined AFTER it's been made, so it's
     # automatically done when the function updates for check
+    # Setting update to True will update whichKingInCheck, checksKing, and endsGame of move object
     def makeMove(self, move, update=False):
         move.updateNotation()
         type = move.type
@@ -251,14 +255,17 @@ class Board:
         move.piece.hasMoved = True
         if update:
             # Generate moves and threats for opposite color
-            self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
+            self.generateAllValidMovesAndThreats(True, "white" if move.piece.color=="black" else "black")
             # Generate valid moves for current color to determine if the king is in check
             self.generateAllValidMovesAndThreats(True, move.piece.color)
             self.updateWhichKingInCheck()
-            # If opposite king in check, updates checksKing variable of Move object
             if self.whichKingInCheck != None:
                 move.setChecksKing(True)
-                move.notation += "+"
+                if self.getAllValidMoves("white" if move.piece.color=="black" else "black")==[]:
+                    move.notation += "#"
+                    move.endsGame = 1
+                else:
+                    move.notation += "+"
         return
     
     # Resets all of the variables updated by makeMove()
@@ -352,7 +359,9 @@ class Move:
         self.board = self.piece.board
         self.game = self.board.game
         self.promoteTo = promoteTo
-
+        # 0 by default, 1 for checkmate, 2 for stalemate, 3 for threefold repetition,
+        # 4 for insufficient material, 5 for 50-move rule; should be updated by makeMove()
+        self.endsGame = 0
         # The pawn which leaves the board when it promotes
         self.pawnPromoted = None
         if moveType in (1,6):

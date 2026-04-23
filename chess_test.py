@@ -141,6 +141,16 @@ class TestPromotion(unittest.TestCase):
         self.assertTrue(self.board.getSquare(notation="g1").piece.type == "q")
         pass
 
+class TestGameEnd(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.board = self.game.board
+    def testCheckmateWhite(self):
+        self.game.makeMoves(("e4","e5","Qh5","Nc6","Bc4","Nf6","Qxf7"))
+        self.assertEqual(self.game.gameOver,1)
+    def testCheckmateBlack(self):
+        self.game.makeMoves(("f4","e5","g4","Qh4"))
+        self.assertEqual(self.game.gameOver,1)
 
 if __name__ == '__main__':
     unittest.main()
