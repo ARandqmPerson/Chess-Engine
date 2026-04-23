@@ -11,11 +11,8 @@ class Game:
         for move in self.moveList:
             print(move.notation)
 
-    # Input the coordinates of the square you want to move from and the square you want to move to
-    # (must account for promotion type because the 4 different promotion moves have the same toSquare and fromSquare)
-    # For example, starting with makeMove([4,1],[4,3]) is pawn to e4
-    # Returns string indicating move validity, move type, and notation
-    def makeMove(self, squareFromCoords, squareToCoords, promotionType=None):
+    # Makes move if valid and returns True if valid and False if not
+    def makeMoveCoordinates(self, squareFromCoords, squareToCoords, promotionType=None):
         fromX = squareFromCoords[0]
         fromY = squareFromCoords[1]
         toX = squareToCoords[0]
@@ -27,31 +24,35 @@ class Game:
             if m.fromSquare==squareFrom and m.toSquare==squareTo and m.promoteTo==promotionType:
                 move = m
                 valid = True
-        if valid == False:
-            print("Invalid move")
-            return
+        if not valid:
+            return False
         # Makes the move on the board
         self.moveList.append(move)
         self.board.makeMove(move, True)
-        print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
+        # Print statement for debugging
+        # print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
         if self.whoseMove == "black":
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
         self.board.generateAllValidMovesAndThreats(True)
-        return
+        return True
     
-    # Does the same thing as makeMove() but accepts standard notation
-    def makeMoveUsingNotation(self, notation):
+    # Calls makeMoveCoordinates() but accepts standard notation
+    def makeMove(self, notation):
+        # The user may or may not add a + or # sign to denote check/checkmate,
+        # so it's removed if present
+        notation1 = notation[0:-1] if notation[-1] in ("+","#") else notation
         for move in self.board.allValidMoves:
-            if move.notation == notation:
-                return self.makeMove(move.fromSquare.coordinates,move.toSquare.coordinates,move.promoteTo)
-        print("Invalid move")
-        return
+            notation2 = move.notation[0:-1] if move.notation[-1] in ("+","#") else move.notation
+            if notation1 == notation2:
+                return self.makeMoveCoordinates(move.fromSquare.coordinates,move.toSquare.coordinates,move.promoteTo)
+        return False
     
     def makeMoves(self, moves):
         for move in moves:
-            self.makeMoveUsingNotation(move)
-        return
+            if not self.makeMove(move):
+                return False
+        return True
 
     
 class Board:
@@ -171,13 +172,23 @@ class Board:
         self.allValidMovesNotation = []
         for move in self.allValidMoves:
             self.allValidMovesNotation.append(move.notation)
-
         return
     
     def getAllValidMoves(self, color=None):
         if color == None:
             return self.allValidMoves
         return [move for move in self.allValidMoves if move.piece.color==color]
+    
+    def displayValidMoves(self):
+        result = ""
+        color = self.game.whoseMove
+        for move in self.allValidMoves:
+            if move.piece.color == color:
+                result += move.notation + ", "
+        result = result[0:-2]
+        print("Valid moves:\n" + result)
+        return
+
 
     def getAllThreatenedMoves(self, color=None):
         if color == None:
@@ -186,11 +197,11 @@ class Board:
 
     # TODO: Add other move types
     # NOTE: For efficiency, makeMove() only runs 
-    # generateAllValidMovesAndThreats and updateWhichKingInCheck() if updateCheck is True
+    # generateAllValidMovesAndThreats and updateWhichKingInCheck() if update is True
     # NOTE: To update notation, disambiguation must be checked BEFORE the move is made,
     # but whether the move is a check can only be determined AFTER it's been made, so it's
     # automatically done when the function updates for check
-    def makeMove(self, move, updateCheck=False):
+    def makeMove(self, move, update=False):
         move.updateNotation()
         type = move.type
         if type == 2:
@@ -238,7 +249,7 @@ class Board:
         else:
             self.whichPawnMoved2.append(None)
         move.piece.hasMoved = True
-        if updateCheck:
+        if update:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color == "black" else "black")
             # Generate valid moves for current color to determine if the king is in check
@@ -341,6 +352,7 @@ class Move:
         self.board = self.piece.board
         self.game = self.board.game
         self.promoteTo = promoteTo
+
         # The pawn which leaves the board when it promotes
         self.pawnPromoted = None
         if moveType in (1,6):
@@ -515,10 +527,13 @@ class Pawn(Piece):
                 if self in temp.getAdjacentEnemyPawns():
                     targetSquare = board.getSquare(temp.x, temp.y+1) if self.color == "white" else board.getSquare(temp.x, temp.y-1)
                     self.validMoves.append(Move(self,square,targetSquare,4))
+
         if not repeat:
+            temp2 = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp2.append(move)
+            self.validMoves = temp2
         return
     
     # Returns a list of enemy pawns that are next to this pawn; this method should be used
@@ -565,10 +580,13 @@ class Rook(Piece):
                     else:
                         blocked = True
                 inc += 1
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp.append(move)
+            self.validMoves = temp
         return
 
 class Knight(Piece):
@@ -590,10 +608,13 @@ class Knight(Piece):
                 self.validMoves.append(Move(self, square, i, 0))
             elif i.pieceColor != self.color:
                 self.validMoves.append(Move(self, square, i, 1))
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp.append(move)
+            self.validMoves = temp
         return
 
 class Bishop(Piece):
@@ -622,10 +643,13 @@ class Bishop(Piece):
                     else:
                         blocked = True
                 inc += 1
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp.append(move)
+            self.validMoves = temp
         return
 
 class Queen(Piece):
@@ -652,10 +676,13 @@ class Queen(Piece):
         for move in self.bishop.threatenedMoves + self.rook.threatenedMoves:
             move.setPiece(self)
             self.threatenedMoves.append(move)
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp.append(move)
+            self.validMoves = temp
         return
 
 class King(Piece):
@@ -702,10 +729,12 @@ class King(Piece):
                     moveA = Move(self, self.square, targetA, 0)
                     moveA.updateLeavesKingInCheck()
                     if not moveA.leavesKingInCheck:
-                        self.validMoves.append(Move(self,square,targetB,2))
-    
+                        self.validMoves.append(Move(self,square,targetB,2))  
+
         if not repeat:
+            temp = []
             for move in self.validMoves:
-                if move.getLeavesKingInCheck():
-                    self.validMoves.remove(move)
+                if not move.getLeavesKingInCheck():
+                    temp.append(move)
+            self.validMoves = temp
         return
