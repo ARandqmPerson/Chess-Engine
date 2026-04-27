@@ -48,7 +48,7 @@ class Game:
         notation1 = notation[0:-1] if notation[-1] in ("+","#") else notation
         for move in self.board.allValidMoves:
             notation2 = move.notation[0:-1] if move.notation[-1] in ("+","#") else move.notation
-            if notation1 == notation2:
+            if notation1 == notation2 and move.color == self.whoseMove:
                 return self.makeMoveCoordinates(move.fromSquare.coordinates,move.toSquare.coordinates,move.promoteTo)
         return False
     
@@ -71,21 +71,12 @@ class Board:
         self.enPassantSquares.append(None)
         self.game = game
         self.capturedPieces = []
+        # NOTE: Works like enPassantSquares
+        # Number of half-moves since last capture or pawn move; game is a draw by 50-move rule at 100
+        self.halfMoves = [0]
         self.whichKingInCheck = None
-        # [0,0] corresponds to a1; [7,0] is h1; [0,7] is a8, etc.
         self.squares = {(i,j): Square((i,j),board=self) for i in range(8) for j in range(8)}
-        self.setPieces({(0,0),(7,0)}, Rook, "white")
-        self.setPieces({(0,7),(7,7)}, Rook, "black")
-        self.setPieces({(1,0),(6,0)}, Knight, "white")
-        self.setPieces({(1,7),(6,7)}, Knight, "black")
-        self.setPieces({(2,0),(5,0)}, Bishop, "white")
-        self.setPieces({(2,7),(5,7)}, Bishop, "black")
-        self.setPieces({(3,0)}, Queen, "white")
-        self.setPieces({(3,7)}, Queen, "black")
-        self.setPieces({(4,0)}, King, "white")
-        self.setPieces({(4,7)}, King, "black")
-        self.setPieces({(k,1) for k in range(8)}, Pawn, "white")
-        self.setPieces({(k,6) for k in range(8)}, Pawn, "black")
+        self.importFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
         # These will be used to determine checks, checkmates, and stalemates
         self.whiteKing = self.getSquare(4,0).piece
         self.blackKing = self.getSquare(4,7).piece
@@ -101,38 +92,79 @@ class Board:
         return
     
     # Sets up pieces according to a provided FEN
-    def readFEN(self, FEN):
+    def importFEN(self, FEN):
         # Slashes cause issues
         string = ""
         for ch in FEN:
             if ch != "/":
                 string += (ch)
+        # DEBUG
+        debugString = [a for a in string]
         location = 0
         char = string[0]
         j = 0
         # FEN goes from 8th rank/file to 1st, so for loop counts backwards
         for i in range(63,-1,-1):
             currentSquare = self.getSquare(7-(i%8),int(i/8))
-            if j > 1:
+            if j > 0:
+                currentSquare.setPiece(None)
                 j -= 1
+                if j == 0:
+                    location += 1
+                    char = string[location]
                 continue
-            elif j == 1:
-                j = 0
-                location += 1
-                char = string[location]
-                continue
-            elif char in ("R","N","B","Q","K","P"):
+            if char in ("R","N","B","Q","K","P"):
                 color = "white"
             elif char in ("r","n","b","q","k","p"):
                 color = "black"
             else:
                 j = int(char) - 1
+                currentSquare.setPiece(None)
+                if j == 0:
+                    location += 1
+                    char = string[location]
                 continue
             str = char.lower()
             temp = {"r":Rook,"n":Knight,"b":Bishop,"q":Queen,"k":King,"p":Pawn}
             self.setPieces({currentSquare.coordinates},temp[str],color)
             location += 1
             char = string[location]
+        # After this loop is finished, string[location + 1] should be whose move
+        location += 1
+        self.game.whoseMove = "white" if string[location] == "w" else "black"
+        location += 2
+        # If castling a certain way is invalid, sets hasMoved on the rook to True
+        # NOTE: This could cause problems in some rare situations (not in normal chess)
+        # where hasMoved needs to be accurate, but this is easiest for now
+        invalidRooks = {"K":"h1","k":"h8","Q":"a1","q":"a8"}
+        while string[location] not in (" ","-"):
+            invalidRooks.pop(string[location])
+            location += 1
+        for square in invalidRooks.values():
+            piece = self.getSquare(notation=square).piece
+            if piece != None and not piece.hasMoved:
+                piece.hasMoved = True
+        # En passant square
+        location += 1
+        if string[location] != "-":
+            self.enPassantSquares.append(self.getSquare(notation=string[location:location+2]))
+            location += 3
+        else:
+            location += 2
+        # Handles 2 digit number
+        if string[location+1] != " ":
+            self.halfMoves = [int(string[location:location+2])]
+            location += 3
+        else:
+            self.halfMoves = [int(string[location])]
+            location += 2
+        self.game.moveNumber = int(string[location])
+        for sq in self.squares.values():
+            if sq.pieceColor == "white" and sq.piece.type == "k":
+                self.whiteKing = sq.piece
+            if sq.pieceColor == "black" and sq.piece.type == "k":
+                self.blackKing = sq.piece
+        self.generateAllValidMovesAndThreats()
         return
 
     # Accepts x, y coordinates or standard notation
@@ -148,9 +180,6 @@ class Board:
         for coords,square in self.squares.items():
             allSquares.append(square)
         return allSquares
-    
-    def getKing(self, color):
-        return self.whiteKing if color == "white" else self.blackKing
 
     def updateWhichKingInCheck(self):
         whiteKingSquare = self.whiteKing.square
@@ -281,7 +310,6 @@ class Board:
             move.fromSquare.setPiece(None)
             move.piece.setSquare(move.toSquare)
             move.toSquare.setPiece(move.piece)
-        # TODO: use better system for en passant
         # If this move is a pawn moving two squares forward, add it to the list
         if type == 0 and move.piece.type == "p" and abs(move.toSquare.y-move.fromSquare.y) == 2:
             if move.color == "white":
@@ -291,6 +319,10 @@ class Board:
         else:
             self.enPassantSquares.append(None)
         move.piece.hasMoved = True
+        if move.piece.type != "p" and type not in (1,4,6):
+            self.halfMoves.append(self.halfMoves[-1]+1)
+        else:
+            self.halfMoves.append(0)
         if update:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color=="black" else "black")
@@ -309,6 +341,8 @@ class Board:
                     move.endsGame = 1
                 else:
                     move.notation += "+"
+            if self.halfMoves[-1] == 100 and move.endsGame == 0:
+                move.endsGame = 5
         return
     
     # Resets all of the variables updated by makeMove()
@@ -350,6 +384,7 @@ class Board:
                 rook.setSquare(self.getSquare(7,move.toSquare.y))
                 self.getSquare(7,move.toSquare.y).setPiece(rook)
         self.enPassantSquares.pop()
+        self.halfMoves.pop()
         # If this piece was just moved for the first time, revert hasMoved to False
         if move.isFirstMove:
             move.piece.hasMoved = False
@@ -480,7 +515,7 @@ class Move:
         oppositeColor = "white" if self.color == "black" else "black"
         threateningPieces = []
         self.board.makeMove(self)
-        kingSquare = self.board.getKing(self.color).square
+        kingSquare = self.board.whiteKing.square if self.color == "white" else self.board.blackKing.square
         for move in self.board.getAllThreatenedMoves(oppositeColor):
             if move.toSquare == kingSquare:
                 threateningPieces.append(move.piece)

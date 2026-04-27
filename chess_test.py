@@ -152,12 +152,34 @@ class TestFEN(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
+    def testPieceSetup(self):
         # This is the FEN after 1. e4
         string = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
-        self.board.readFEN(string)
-    def testPieceSetup(self):
+        self.board.importFEN(string)
         self.assertTrue(self.board.getSquare(notation="e4").pieceColor=="white")
         self.assertTrue(self.board.getSquare(notation="e8").pieceColor=="black")
+    def testEnPassant(self):
+        # FEN after 1. e4 e6 2. e5 d5
+        self.board.importFEN("rnbqkbnr/ppp2ppp/4p3/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3")
+        self.game.makeMove("exd6")
+        self.assertTrue(self.board.getSquare(notation="d6").pieceColor=="white")
+    def test50MoveRule(self):
+        # Each side has king+rook and 98 half-moves have been played without capture/pawn move
+        self.board.importFEN("8/8/3kr3/8/8/5KR1/8/8 w - - 98 64")
+        self.game.makeMoves(("Rg1","Re8"))
+        # Should be draw by 50-move rule
+        self.assertTrue(self.game.gameOver == 5)
+    def testValidCastling(self):
+        self.board.importFEN("r3k2r/ppp2ppp/Qb4qn/b4B1N/7n/1BN5/PPP2PPP/R3K2R w KQkq - 0 1")
+        self.assertTrue(self.game.makeMove("O-O"))
+        self.assertTrue(self.game.makeMove("O-O"))
+    def testInvalidCastling(self):
+        self.board.importFEN("r3k2r/ppp2ppp/Qb4qn/b4B1N/7n/1BN5/PPP2PPP/R3K2R w - - 0 1")
+        self.assertFalse(self.game.makeMove("O-O"))
+        self.assertFalse(self.game.makeMove("O-O"))
+        self.board.importFEN("r3k2r/ppp2ppp/Qb4qn/b4B1N/7n/1BN5/PPP2PPP/R3K2R w Kq - 0 1")
+        self.assertFalse(self.game.makeMove("O-O-O"))
+        self.assertTrue(self.game.makeMove("O-O"))        
 
 if __name__ == '__main__':
     unittest.main()
