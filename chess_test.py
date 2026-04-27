@@ -179,7 +179,14 @@ class TestFEN(unittest.TestCase):
         self.assertFalse(self.game.makeMove("O-O"))
         self.board.importFEN("r3k2r/ppp2ppp/Qb4qn/b4B1N/7n/1BN5/PPP2PPP/R3K2R w Kq - 0 1")
         self.assertFalse(self.game.makeMove("O-O-O"))
-        self.assertTrue(self.game.makeMove("O-O"))        
+        self.assertTrue(self.game.makeMove("O-O"))
+    def testExportFEN(self):
+        self.game.makeMoves(("Nf3","Nf6","Nc3","Nc6","Rg1","Rb8","Rh1","Ra8","e4"))
+        result = self.board.exportFEN()
+        print("\n"+result)
+        print("Expected:\n"+"r1bqkb1r/pppppppp/2n2n2/8/4P3/2N2N2/PPPP1PPP/R1BQKB1R b Qk e3 0 5")
+        self.assertEqual(result,"r1bqkb1r/pppppppp/2n2n2/8/4P3/2N2N2/PPPP1PPP/R1BQKB1R b Qk e3 0 5")
+
 
 if __name__ == '__main__':
     unittest.main()

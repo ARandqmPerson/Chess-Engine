@@ -98,8 +98,6 @@ class Board:
         for ch in FEN:
             if ch != "/":
                 string += (ch)
-        # DEBUG
-        debugString = [a for a in string]
         location = 0
         char = string[0]
         j = 0
@@ -166,6 +164,42 @@ class Board:
                 self.blackKing = sq.piece
         self.generateAllValidMovesAndThreats()
         return
+
+    def exportFEN(self):
+        result = ""
+        empty = 0
+        for i in range(63,-1,-1):
+            currentSquare = self.getSquare(7-(i%8),int(i/8))
+            if currentSquare.piece != None:
+                if empty > 0:
+                    result += str(empty)
+                empty = 0
+                result += (currentSquare.piece.type.upper() if currentSquare.piece.color == "white" else currentSquare.piece.type)
+            else:
+                empty += 1
+            if i % 8 == 0:
+                if empty > 0:
+                    result += str(empty)
+                    empty = 0
+                if i != 0:
+                    result += "/"
+        result += " w " if self.game.whoseMove == "white" else " b "
+        temp = {"h1":"K","a1":"Q","h8":"k","a8":"q"}
+        for sq in temp:
+            piece = self.getSquare(notation=sq).piece
+            if piece != None and not piece.hasMoved:
+                king = self.whiteKing if piece.color == "white" else self.blackKing
+                if not king.hasMoved:
+                    result += temp[sq]
+        if result[-1] == " ":
+            result += "-"
+        if self.enPassantSquares[-1] == None:
+            result += " -"
+        else:
+            result += " " + self.enPassantSquares[-1].notation
+        result += " " + str(self.halfMoves[-1])
+        result += " " + str(self.game.moveNumber)
+        return result
 
     # Accepts x, y coordinates or standard notation
     def getSquare(self, targetX=None, targetY=None, notation=None):
