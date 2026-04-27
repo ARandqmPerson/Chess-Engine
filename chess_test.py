@@ -46,11 +46,7 @@ class TestMultipleMoves(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-        self.game.makeMoveCoordinates([4,1],[4,3])
-        self.game.makeMoveCoordinates([4,6],[4,4])
-        self.game.makeMoveCoordinates([3,0],[7,4])
-        self.game.makeMoveCoordinates([6,7],[5,5])
-        self.game.makeMoveCoordinates([7,4],[5,6])
+        self.game.makeMoves(("e4","e5","Qh5","Nf6","Qxf7+"))
         return
     def testGameInfo(self):
         self.assertEqual(self.game.whoseMove,"black")
@@ -156,10 +152,10 @@ class TestFEN(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.board = self.game.board
-    def testPieceSetup(self):
         # This is the FEN after 1. e4
         string = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
         self.board.readFEN(string)
+    def testPieceSetup(self):
         self.assertTrue(self.board.getSquare(notation="e4").pieceColor=="white")
         self.assertTrue(self.board.getSquare(notation="e8").pieceColor=="black")
 

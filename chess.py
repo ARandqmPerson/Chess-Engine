@@ -61,15 +61,14 @@ class Game:
     
 class Board:
     def __init__(self, game=None):
-        # Similarly to the Game class's moveList, this list keeps track of moves made on the board.
+        # NOTE: Similarly to the Game class's moveList, this list keeps track of moves made on the board.
         # One item on the list represents a half-move that has been played. However, the list only tracks
-        # which pawn on the board can be captured en passant on any given move. The downside of
+        # on which square en passant can be captured (it's only possible on one square max at any given time). The downside of
         # updating this list is that it must be done every time makeMove() is called, but it's
-        # necessary because it otherwise wouldn't be possible to track en passant status after
-        # undoMove() is called.
-        self.whichPawnMoved2 = []
-        # whichPawnMoved2[-1] causes an error when the list is empty
-        self.whichPawnMoved2.append(None)
+        # necessary because it otherwise wouldn't be possible to track en passant status after undoMove() is called.
+        self.enPassantSquares = []
+        # enPassantSquares[-1] causes an error when the list is empty
+        self.enPassantSquares.append(None)
         self.game = game
         self.capturedPieces = []
         self.whichKingInCheck = None
@@ -285,15 +284,23 @@ class Board:
         # TODO: use better system for en passant
         # If this move is a pawn moving two squares forward, add it to the list
         if type == 0 and move.piece.type == "p" and abs(move.toSquare.y-move.fromSquare.y) == 2:
-            self.whichPawnMoved2.append(move.piece)
+            if move.color == "white":
+                self.enPassantSquares.append(self.getSquare(move.toSquare.x,move.toSquare.y-1))
+            else:
+                self.enPassantSquares.append(self.getSquare(move.toSquare.x,move.toSquare.y+1))
         else:
-            self.whichPawnMoved2.append(None)
+            self.enPassantSquares.append(None)
         move.piece.hasMoved = True
         if update:
             # Generate moves and threats for opposite color
             self.generateAllValidMovesAndThreats(True, "white" if move.piece.color=="black" else "black")
+            # Moves and threats are erased when generateValidMovesAndThreats() is called again
+            temp1 = self.allValidMoves
+            temp2 = self.allThreatenedMoves
             # Generate valid moves for current color to determine if the king is in check
             self.generateAllValidMovesAndThreats(True, move.piece.color)
+            self.allValidMoves += temp1
+            self.allThreatenedMoves += temp2
             self.updateWhichKingInCheck()
             if self.whichKingInCheck != None:
                 move.setChecksKing(True)
@@ -342,7 +349,7 @@ class Board:
                 rook.square.setPiece(None)
                 rook.setSquare(self.getSquare(7,move.toSquare.y))
                 self.getSquare(7,move.toSquare.y).setPiece(rook)
-        self.whichPawnMoved2.pop()
+        self.enPassantSquares.pop()
         # If this piece was just moved for the first time, revert hasMoved to False
         if move.isFirstMove:
             move.piece.hasMoved = False
@@ -522,8 +529,6 @@ class Pawn(Piece):
     def __init__(self, color=None, square=None, board=None, hasMoved=False):
         super().__init__(color, square, board, hasMoved)
         self.type = "p"
-        # 0 if pawn hasn't been moved, 1 if it just moved and en passant is possible,
-        # and 2 if it has moved and en passant is not possible
     
     # Updates valid moves and threatened squares for this piece
     # Prevents recursion (updateLeavesKingInCheck() calls this function) by using repeat parameter
@@ -546,8 +551,15 @@ class Pawn(Piece):
                 self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+inc), 0))
                 if board.getSquare(self.x, self.y+2*inc).piece == None and not self.hasMoved:
                     self.validMoves.append(Move(self, square, board.getSquare(self.x, self.y+2*inc), 0))
-        if self.x!=0:
-            current = board.getSquare(self.x-1,self.y+inc)
+        # Captures
+        for i in (-1,1):
+            if self.x==0 and i==-1 or self.x==7 and i==1:
+                continue
+            current = board.getSquare(self.x+i,self.y+inc)
+            if board.enPassantSquares[-1] == current:
+                # A white pawn can only en passant from the 5th rank, black from the 4th rank
+                if self.color=="white" and self.y==4 or self.color=="black" and self.y==3:
+                    self.validMoves.append(Move(self,square,current,4))
             self.threatenedMoves.append(Move(self, square, current, 5))
             if current.pieceColor not in (None,self.color):
                 if self.y+inc in (0,7):
@@ -555,24 +567,7 @@ class Pawn(Piece):
                         self.validMoves.append(Move(self,square,current,6,type))
                 else:
                     self.validMoves.append(Move(self,square,current,1))
-        if self.x!=7:
-            current = board.getSquare(self.x+1,self.y+inc)
-            self.threatenedMoves.append(Move(self, square, current, 5))
-            if current.pieceColor not in (None,self.color):
-                if current.y in (0,7):
-                    for type in ("q","r","n","b"):
-                        self.validMoves.append(Move(self,square,current,6,type))
-                else:
-                    self.validMoves.append(Move(self,square,current,1))
-        # If an enemy pawn just moved 2 squares and this pawn is next to it,
-        # add en passant as a valid move
-        temp = self.board.whichPawnMoved2[-1]
-        if temp != None:
-            if temp.color != self.color:
-                if self in temp.getAdjacentEnemyPawns():
-                    targetSquare = board.getSquare(temp.x, temp.y+1) if self.color == "white" else board.getSquare(temp.x, temp.y-1)
-                    self.validMoves.append(Move(self,square,targetSquare,4))
-
+        
         if not repeat:
             temp2 = []
             for move in self.validMoves:
@@ -580,23 +575,6 @@ class Pawn(Piece):
                     temp2.append(move)
             self.validMoves = temp2
         return
-    
-    # Returns a list of enemy pawns that are next to this pawn; this method should be used
-    # to update which pawns can capture en passant
-    def getAdjacentEnemyPawns(self):
-        board = self.board
-        result = []
-        if self.x != 0:
-            target = board.getSquare(self.x-1,self.y)
-            if target.pieceColor not in (None, self.color):
-                if target.piece.type == "p":
-                    result += [target.piece]
-        if self.x != 7:
-            target = board.getSquare(self.x+1,self.y)
-            if target.pieceColor not in (None, self.color):
-                if target.piece.type == "p":
-                    result += [target.piece]
-        return result
 
 class Rook(Piece):
     def __init__(self, color=None, square=None, board=None, hasMoved=False, promoted=False):
