@@ -57,7 +57,16 @@ class Game:
             if not self.makeMove(move):
                 return False
         return True
-
+    
+    def undoLastMove(self):
+        self.board.undoMove(self.moveList[-1])
+        self.moveList.pop()
+        if self.whoseMove == "white":
+            self.moveNumber -= 1
+        self.whoseMove = "white" if self.whoseMove == "black" else "black"
+        self.gameOver = self.moveList[-1].endsGame
+        self.board.generateAllValidMovesAndThreats(True)
+        return
     
 class Board:
     def __init__(self, game=None):
@@ -69,14 +78,17 @@ class Board:
         self.enPassantSquares = []
         # enPassantSquares[-1] causes an error when the list is empty
         self.enPassantSquares.append(None)
-        self.game = game
-        self.capturedPieces = []
-        # NOTE: Works like enPassantSquares
+        # halfMoves and shortFENs work like enPassantSquares
         # Number of half-moves since last capture or pawn move; game is a draw by 50-move rule at 100
         self.halfMoves = [0]
+        # Used for threefold repetition
+        self.shortFENs = []
+        self.game = game
+        self.capturedPieces = []
         self.whichKingInCheck = None
         self.squares = {(i,j): Square((i,j),board=self) for i in range(8) for j in range(8)}
         self.importFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self.shortFENs.append(self.getShortFEN())
         # These will be used to determine checks, checkmates, and stalemates
         self.whiteKing = self.getSquare(4,0).piece
         self.blackKing = self.getSquare(4,7).piece
@@ -200,6 +212,25 @@ class Board:
         result += " " + str(self.halfMoves[-1])
         result += " " + str(self.game.moveNumber)
         return result
+    
+    # Used internally as a more efficient way of recording positions
+    # for threefold repetition detection
+    def getShortFEN(self):
+        result = ""
+        for sq in self.getAllSquares():
+            result += "-" if sq.piece == None else sq.piece.type
+        return result
+    
+    def displayBoard(self):
+        string = ""
+        for rank in range(7,-1,-1):
+            for file in range(0,8):
+                piece = self.getSquare(file,rank).piece
+                string+="["+(" " if piece==None else piece.type if piece.color=="black" else piece.type.capitalize())+"]"
+            string += " "+str(rank+1)+"\n"
+        string += " a  b  c  d  e  f  g  h "
+        print(string)
+        return
 
     # Accepts x, y coordinates or standard notation
     def getSquare(self, targetX=None, targetY=None, notation=None):
@@ -352,6 +383,7 @@ class Board:
                 self.enPassantSquares.append(self.getSquare(move.toSquare.x,move.toSquare.y+1))
         else:
             self.enPassantSquares.append(None)
+        self.shortFENs.append(self.getShortFEN())
         move.piece.hasMoved = True
         if move.piece.type != "p" and type not in (1,4,6):
             self.halfMoves.append(self.halfMoves[-1]+1)
@@ -367,6 +399,7 @@ class Board:
             self.generateAllValidMovesAndThreats(True, move.piece.color)
             self.allValidMoves += temp1
             self.allThreatenedMoves += temp2
+            # Check/checkmate
             self.updateWhichKingInCheck()
             if self.whichKingInCheck != None:
                 move.setChecksKing(True)
@@ -375,8 +408,20 @@ class Board:
                     move.endsGame = 1
                 else:
                     move.notation += "+"
+            # Stalemate
+            if self.whichKingInCheck==None and self.getAllValidMoves("white" if move.piece.color=="black" else "black")==[]:
+                    move.endsGame = 2
+            # 50-move
             if self.halfMoves[-1] == 100 and move.endsGame == 0:
                 move.endsGame = 5
+            # Threefold
+            if move.endsGame == 0:
+                matches = 0
+                for FEN in self.shortFENs[0:-2]:
+                    if FEN == self.shortFENs[-1]:
+                        matches += 1
+                if matches > 1:
+                    move.endsGame = 3
         return
     
     # Resets all of the variables updated by makeMove()
@@ -419,6 +464,7 @@ class Board:
                 self.getSquare(7,move.toSquare.y).setPiece(rook)
         self.enPassantSquares.pop()
         self.halfMoves.pop()
+        self.shortFENs.pop()
         # If this piece was just moved for the first time, revert hasMoved to False
         if move.isFirstMove:
             move.piece.hasMoved = False

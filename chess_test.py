@@ -147,6 +147,15 @@ class TestGameEnd(unittest.TestCase):
     def testCheckmateBlack(self):
         self.game.makeMoves(("f4","e5","g4","Qh4"))
         self.assertEqual(self.game.gameOver,1)
+    def testStalemate(self):
+        self.board.importFEN("7K/8/8/1k4q1/8/8/8/8 b - - 0 1")
+        self.game.makeMove("Qg6")
+        self.assertTrue(self.game.gameOver == 2)
+        return
+    def testThreefoldRepetition(self):
+        # There could be a lot of untested edge cases
+        self.game.makeMoves(("Nf3","Nc6","Ng1","Nb8","Nc3","Nf6","Nb1","Ng8"))
+        self.assertTrue(self.game.gameOver == 3)
 
 class TestFEN(unittest.TestCase):
     def setUp(self):
