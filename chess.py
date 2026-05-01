@@ -12,7 +12,7 @@ class Game:
 
     def displayMoveList(self):
         for move in self.moveList:
-            print(move.notation)
+            print(move.notation, end=" ")
 
     # Makes move if valid and returns True if valid and False if not
     def makeMoveCoordinates(self, squareFromCoords, squareToCoords, promotionType=None):
@@ -33,7 +33,7 @@ class Game:
         self.moveList.append(move)
         self.board.makeMove(move, True)
         # Print statement for debugging
-        # print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
+        print(str(move.notation)+"; Valid move; Move type: "+str(move.type))
         if self.whoseMove == "black":
             self.moveNumber += 1
         self.whoseMove = "white" if self.whoseMove == "black" else "black"
@@ -252,11 +252,12 @@ class Board:
         for move in self.getAllValidMoves("white"):
             if move.toSquare == blackKingSquare:
                 self.whichKingInCheck = "black"
-                break
+                return
         for move in self.getAllValidMoves("black"):
             if move.toSquare == whiteKingSquare:
                 self.whichKingInCheck = "white"
-                break
+                return
+        self.whichKingInCheck = None
         return
 
     def getAllActivePieces(self, color=None):
@@ -600,10 +601,11 @@ class Move:
             if move.toSquare == kingSquare:
                 threateningPieces.append(move.piece)
         for piece in threateningPieces:
-            piece.generateValidMovesAndThreats(True)
-            for move in piece.validMoves:
-                if move.toSquare == kingSquare:
-                    self.leavesKingInCheck = True
+            if piece.status == 0:
+                piece.generateValidMovesAndThreats(True)
+                for move in piece.validMoves:
+                    if move.toSquare == kingSquare:
+                        self.leavesKingInCheck = True
         self.board.undoMove(self)
         return
     
@@ -814,6 +816,7 @@ class Queen(Piece):
         for move in self.bishop.threatenedMoves + self.rook.threatenedMoves:
             move.setPiece(self)
             self.threatenedMoves.append(move)
+        self.square.setPiece(self)
 
         if not repeat:
             temp = []

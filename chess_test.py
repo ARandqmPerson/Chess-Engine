@@ -195,6 +195,14 @@ class TestFEN(unittest.TestCase):
         print("\n"+result)
         print("Expected:\n"+"r1bqkb1r/pppppppp/2n2n2/8/4P3/2N2N2/PPPP1PPP/R1BQKB1R b Qk e3 0 5")
         self.assertEqual(result,"r1bqkb1r/pppppppp/2n2n2/8/4P3/2N2N2/PPPP1PPP/R1BQKB1R b Qk e3 0 5")
+# Just random games, no specific edge case being tested for
+class TestMiscellaneous(unittest.TestCase):
+    def setUp(self):
+        self.game = Game()
+    def testGame1(self):
+        self.game.makeMoves(("e4","e5","Nf3","Nf6","Nxe5","d6","Nf3","Nxe4","d4","d5","Bd3","Bd6","O-O","O-O","Re1","Re8"))
+        self.game.makeMoves(("c4","c6","Qc2","Bf5","Nc3","Nxc3","Rxe8+","Qxe8","Bxf5","Ne4"))
+        self.assertTrue(self.game.moveNumber == 14)
 
 
 if __name__ == '__main__':
